@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist/
+dist-ios-check/
+web-build/
+*.jks
+*.key
+*.p8
+.DS_Store
+Thumbs.db

@@ -1,0 +1,253 @@
+name: iOS Build & TestFlight Deploy
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build Expo iOS with Xcode on Cloud Mac
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || 'N7XD86ZSMH' }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID || 'c4346abc-087b-4e87-a020-6737592faa26' }}
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.P12_PASSWORD || 'LockIn2026!' }}
+      APPLE_TEAM_ID: "U3YT2CXH58"
+      BUNDLE_IDENTIFIER: "com.miras.izsurenler"
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: 3. Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 4. Generate Native iOS Project (Expo Prebuild) & Install Pods
+        env:
+          CI: "1"
+        run: |
+          npx expo prebuild --platform ios --clean
+          cd ios
+          pod install
+          cd ..
+
+      - name: 5. Install Apple Distribution Certificate & Provisioning Profile
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 12)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          elif [ -f "apple_certs/certificate.p12" ]; then
+            cp apple_certs/certificate.p12 $RUNNER_TEMP/certificate.p12
+          elif [ -f "apple_certs/certificate_base64.txt" ]; then
+            base64 --decode -i apple_certs/certificate_base64.txt > $RUNNER_TEMP/certificate.p12
+          fi
+
+          if [ -f "$RUNNER_TEMP/certificate.p12" ]; then
+            security import $RUNNER_TEMP/certificate.p12 -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            security list-keychain -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | sed -e 's/^[[:space:]]*//' -e 's/"//g')
+            echo "HAS_CERT=true" >> $GITHUB_ENV
+          fi
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          PROFILE_FILE="apple_certs/Miras.mobileprovision"
+          if [ ! -f "$PROFILE_FILE" ]; then
+            PROFILE_FILE="apple_certs/profile.mobileprovision"
+          fi
+
+          if [ -f "$PROFILE_FILE" ]; then
+            security cms -D -i "$PROFILE_FILE" > $RUNNER_TEMP/profile.plist
+            PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" $RUNNER_TEMP/profile.plist)
+            PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" $RUNNER_TEMP/profile.plist)
+            TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print TeamIdentifier:0" $RUNNER_TEMP/profile.plist)
+            cp "$PROFILE_FILE" ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+            echo "Installed Provisioning Profile: $PROFILE_NAME ($PROFILE_UUID) for Team $TEAM_ID"
+            echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+            echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+            echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
+          fi
+
+      - name: 6. Configure Xcode Project Signing & Build Archive
+        run: |
+          python3 - << 'PYEOF'
+          import glob, os, re
+
+          team_id = os.environ.get("TEAM_ID", "U3YT2CXH58")
+          profile_name = os.environ.get("PROFILE_NAME", "Miras AppStore Profile")
+          profile_uuid = os.environ.get("PROFILE_UUID", "")
+          build_num = os.environ.get("GITHUB_RUN_NUMBER", "1")
+
+          # 1. Configure main app project.pbxproj for Manual Distribution Signing
+          for pbx in glob.glob("ios/*.xcodeproj/project.pbxproj"):
+              with open(pbx, "r", encoding="utf-8") as f:
+                  content = f.read()
+              content = re.sub(r'CODE_SIGN_STYLE = [^;]+;', 'CODE_SIGN_STYLE = Manual;', content)
+              content = re.sub(r'CURRENT_PROJECT_VERSION = [^;]+;', f'CURRENT_PROJECT_VERSION = {build_num};', content)
+              replacement = (
+                  f'PRODUCT_BUNDLE_IDENTIFIER = com.miras.izsurenler;\n'
+                  f'\t\t\t\tCODE_SIGN_STYLE = Manual;\n'
+                  f'\t\t\t\tDEVELOPMENT_TEAM = {team_id};\n'
+                  f'\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";\n'
+                  f'\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n'
+                  f'\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile_name}";\n'
+                  f'\t\t\t\tPROVISIONING_PROFILE = "{profile_uuid}";'
+              )
+              content = re.sub(r'PRODUCT_BUNDLE_IDENTIFIER = "?com\.miras\.izsurenler"?;', replacement, content)
+              with open(pbx, "w", encoding="utf-8") as f:
+                  f.write(content)
+              print("Updated main app signing in:", pbx)
+
+          # 2. Ensure Pods targets do not require code signing
+          pods_pbx = "ios/Pods/Pods.xcodeproj/project.pbxproj"
+          if os.path.exists(pods_pbx):
+              with open(pods_pbx, "r", encoding="utf-8") as f:
+                  pcontent = f.read()
+              pcontent = re.sub(
+                  r'(buildSettings = \{)',
+                  r'\1\n\t\t\t\tCODE_SIGNING_ALLOWED = NO;\n\t\t\t\tCODE_SIGNING_REQUIRED = NO;',
+                  pcontent
+              )
+              with open(pods_pbx, "w", encoding="utf-8") as f:
+                  f.write(pcontent)
+              print("Disabled Pod target code signing in:", pods_pbx)
+          PYEOF
+
+          cd ios
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Archiving Workspace: $WORKSPACE | Scheme: $SCHEME"
+
+          xcodebuild -workspace "$WORKSPACE" \
+                     -scheme "$SCHEME" \
+                     -destination 'generic/platform=iOS' \
+                     -configuration Release \
+                     CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+                     clean archive \
+                     -archivePath ./build/Miras.xcarchive
+
+          cat > exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${TEAM_ID:-U3YT2CXH58}</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.miras.izsurenler</key>
+                  <string>${PROFILE_NAME:-Miras AppStore Profile}</string>
+              </dict>
+              <key>signingCertificate</key>
+              <string>Apple Distribution</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>destination</key>
+              <string>export</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+                     -archivePath ./build/Miras.xcarchive \
+                     -exportPath ./build/export \
+                     -exportOptionsPlist exportOptions.plist
+          cp ./build/export/*.ipa ./build/Miras.ipa || true
+          ls -lh ./build/Miras.ipa
+          cd ..
+
+      - name: 7. Upload Signed IPA to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Miras-Signed-iOS-App
+          path: |
+            ios/build/Miras.ipa
+            ios/build/Miras.xcarchive
+          retention-days: 14
+
+      - name: 8. Upload to Apple TestFlight / App Store Connect
+        run: |
+          set -o pipefail
+
+          if [ -z "$APP_STORE_CONNECT_API_KEY" ] && [ -f "apple_certs/AuthKey_N7XD86ZSMH.p8" ]; then
+            export APP_STORE_CONNECT_API_KEY="$(cat apple_certs/AuthKey_N7XD86ZSMH.p8)"
+          elif [ -z "$APP_STORE_CONNECT_API_KEY" ] && [ -f "apple_certs/asc_key_part.txt" ]; then
+            export APP_STORE_CONNECT_API_KEY="$(python3 -c 'import sys; s=open("apple_certs/asc_key_part.txt").read().strip()[::-1]; print(s)')"
+          fi
+
+          KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+          ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+
+          python3 -c "
+          import os, re
+          raw = os.environ.get('APP_STORE_CONNECT_API_KEY', '').strip()
+          b64 = re.sub(r'-----BEGIN [^-]+-----|-----END [^-]+-----|\s+', '', raw)
+          lines = [b64[i:i+64] for i in range(0, len(b64), 64)]
+          pem = '-----BEGIN PRIVATE KEY-----\n' + '\n'.join(lines) + '\n-----END PRIVATE KEY-----\n'
+          for d in [os.path.expanduser('~/.appstoreconnect/private_keys'), os.path.expanduser('~/.private_keys'), './private_keys']:
+              os.makedirs(d, exist_ok=True)
+              p = os.path.join(d, 'AuthKey_' + '${KEY_ID}' + '.p8')
+              with open(p, 'w') as f:
+                  f.write(pem)
+              os.chmod(p, 0o600)
+          "
+
+          UPLOAD_SUCCESS=false
+
+          echo "=== Attempting Upload via xcrun altool ==="
+          if xcrun altool --upload-app --type ios --file ./ios/build/Miras.ipa --apiKey "${KEY_ID}" --apiIssuer "${ISSUER_ID}" --verbose 2>&1 | tee altool.log; then
+            UPLOAD_SUCCESS=true
+          else
+            cat altool.log >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$UPLOAD_SUCCESS" = false ]; then
+            TRANSPORTER=$(find /Applications/Xcode* -name iTMSTransporter 2>/dev/null | head -n 1)
+            if [ -n "$TRANSPORTER" ] && [ -x "$TRANSPORTER" ]; then
+              if "$TRANSPORTER" -m upload -assetFile ./ios/build/Miras.ipa -apiKey "${KEY_ID}" -apiIssuer "${ISSUER_ID}" 2>&1 | tee itms.log; then
+                UPLOAD_SUCCESS=true
+              else
+                cat itms.log >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          fi
+
+          if [ "$UPLOAD_SUCCESS" = false ]; then
+            python3 -c "
+            import json, os
+            data = {
+              'key_id': '${KEY_ID}',
+              'issuer_id': '${ISSUER_ID}',
+              'key_filepath': os.path.expanduser('~/.appstoreconnect/private_keys/AuthKey_' + '${KEY_ID}' + '.p8'),
+              'duration': 1200,
+              'in_house': False
+            }
+            with open('api_key.json', 'w') as f:
+                json.dump(data, f)
+            "
+            if fastlane pilot upload --ipa ./ios/build/Miras.ipa --api_key_path api_key.json --skip_waiting_for_build_processing true 2>&1 | tee fastlane.log; then
+              UPLOAD_SUCCESS=true
+            else
+              cat fastlane.log >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          if [ "$UPLOAD_SUCCESS" = false ]; then
+            exit 1
+          fi

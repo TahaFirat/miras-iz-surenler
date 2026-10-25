@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "MİRAS: İz Sürenler",
+    "slug": "miras-iz-surenler",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "miras",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E1B4B"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.miras.izsurenler",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "MİRAS: İz Sürenler",
+        "CFBundleDevelopmentRegion": "tr",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "versionCode": 1,
+      "package": "com.miras.izsurenler",
+      "permissions": [],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#1E1B4B"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
