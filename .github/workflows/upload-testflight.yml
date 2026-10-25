@@ -1,0 +1,57 @@
+name: Fast Upload Signed IPA to TestFlight (30s)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload-testflight:
+    name: Download Signed IPA & Upload to App Store Connect
+    runs-on: macos-latest
+    timeout-minutes: 15
+    env:
+      APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || 'N7XD86ZSMH' }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID || 'c4346abc-087b-4e87-a020-6737592faa26' }}
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Download Latest Signed Miras.ipa Artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ipa_out
+          RUN_ID=$(gh run list --workflow="ios-build.yml" --limit 5 --json databaseId,status --jq '.[] | select(.status=="completed") | .databaseId' | head -n 1)
+          echo "Downloading Miras-Signed-iOS-App from Run ID: $RUN_ID"
+          gh run download "$RUN_ID" -n "Miras-Signed-iOS-App" -D ipa_out
+          find ipa_out -name "*.ipa"
+
+      - name: 3. Upload Signed Miras.ipa to Apple TestFlight / App Store Connect
+        run: |
+          set -o pipefail
+          IPA_FILE=$(find ipa_out -name "*.ipa" | head -n 1)
+          echo "Uploading IPA: $IPA_FILE"
+
+          if [ -z "$APP_STORE_CONNECT_API_KEY" ] && [ -f "apple_certs/asc_key_part.txt" ]; then
+            export APP_STORE_CONNECT_API_KEY="$(python3 -c 's=open("apple_certs/asc_key_part.txt").read().strip()[::-1]; print(s)')"
+          fi
+
+          KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+          ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+
+          python3 -c "
+          import os, re
+          raw = os.environ.get('APP_STORE_CONNECT_API_KEY', '').strip()
+          b64 = re.sub(r'-----BEGIN [^-]+-----|-----END [^-]+-----|\s+', '', raw)
+          lines = [b64[i:i+64] for i in range(0, len(b64), 64)]
+          pem = '-----BEGIN PRIVATE KEY-----\n' + '\n'.join(lines) + '\n-----END PRIVATE KEY-----\n'
+          for d in [os.path.expanduser('~/.appstoreconnect/private_keys'), os.path.expanduser('~/.private_keys'), './private_keys']:
+              os.makedirs(d, exist_ok=True)
+              p = os.path.join(d, 'AuthKey_' + '${KEY_ID}' + '.p8')
+              with open(p, 'w') as f:
+                  f.write(pem)
+              os.chmod(p, 0o600)
+          "
+
+          xcrun altool --upload-app --type ios --file "$IPA_FILE" --apiKey "${KEY_ID}" --apiIssuer "${ISSUER_ID}" --verbose
