@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, Image, StyleSheet, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Shield,
@@ -23,6 +23,8 @@ export interface HeroCardProps {
   completedChapters?: string[];
   isCompleted?: boolean;
   isTablet: boolean;
+  isPhoneLandscape?: boolean;
+  cardWidth?: string | number;
   onPress: (chapterId: string) => void;
 }
 
@@ -30,12 +32,16 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   hero,
   completedChapters = [],
   isTablet,
+  isPhoneLandscape = false,
+  cardWidth,
   onPress,
 }) => {
   const savedSceneProgress = useUserStore((s) => s.savedSceneProgress);
 
   const coverImagePath =
-    hero.images?.cover ?? hero.coverImage ?? "assets/images/selahaddin_hero.png";
+    hero.images?.cover ??
+    hero.coverImage ??
+    "assets/images/selahaddin_hero.png";
   const imageSource = resolveImageAsset(coverImagePath);
 
   const totalHeroChapters = hero.chapters.length;
@@ -59,8 +65,11 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   const [selectedChapterIdx, setSelectedChapterIdx] =
     useState<number>(defaultChapterIndex);
 
-  const activeChapter =
-    hero.chapters[selectedChapterIdx] ?? hero.chapters[0];
+  useEffect(() => {
+    setSelectedChapterIdx(defaultChapterIndex);
+  }, [defaultChapterIndex, hero.id]);
+
+  const activeChapter = hero.chapters[selectedChapterIdx] ?? hero.chapters[0];
 
   const isActiveDone = activeChapter
     ? completedChapters.includes(activeChapter.id)
@@ -80,45 +89,45 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         return {
           bg: "#F59E0B",
           borderBottom: "#B45309",
-          icon: <Scale size={12} color="#FFFFFF" />,
+          icon: <Scale size={11} color="#FFFFFF" />,
         };
       case "MERTLIK_CESARET":
         return {
           bg: "#F43F5E",
           borderBottom: "#BE123C",
-          icon: <Shield size={12} color="#FFFFFF" />,
+          icon: <Shield size={11} color="#FFFFFF" />,
         };
       case "BILIM_DENEY":
       case "BILIM_ICAT":
         return {
           bg: "#10B981",
           borderBottom: "#047857",
-          icon: <Cog size={12} color="#FFFFFF" />,
+          icon: <Cog size={11} color="#FFFFFF" />,
         };
       case "GIZEM_IZ_SURME":
         return {
           bg: "#F59E0B",
           borderBottom: "#B45309",
-          icon: <Search size={12} color="#FFFFFF" />,
+          icon: <Search size={11} color="#FFFFFF" />,
         };
       case "BUYUK_SEYYAHLAR":
       case "KESIF_SEYAHAT":
         return {
           bg: "#10B981",
           borderBottom: "#047857",
-          icon: <Compass size={12} color="#FFFFFF" />,
+          icon: <Compass size={11} color="#FFFFFF" />,
         };
       case "BILGELIK_GONUL":
         return {
           bg: "#10B981",
           borderBottom: "#047857",
-          icon: <Sparkles size={12} color="#FFFFFF" />,
+          icon: <Sparkles size={11} color="#FFFFFF" />,
         };
       case "SANAT_ESTETIK":
         return {
           bg: "#F59E0B",
           borderBottom: "#B45309",
-          icon: <Feather size={12} color="#FFFFFF" />,
+          icon: <Feather size={11} color="#FFFFFF" />,
         };
       case "MERHAMET_VAKIF":
       case "MEDENIYET_IYILIK":
@@ -126,24 +135,25 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         return {
           bg: "#F43F5E",
           borderBottom: "#BE123C",
-          icon: <Heart size={12} color="#FFFFFF" />,
+          icon: <Heart size={11} color="#FFFFFF" />,
         };
     }
   };
 
   const categoryTheme = getCategoryTheme();
+  const minCardHeight = isPhoneLandscape ? 236 : isTablet ? 298 : 264;
 
   return (
     <View
       style={{
-        width: isTablet ? "48.8%" : "100%",
-        marginBottom: isTablet ? 20 : 14,
+        width: (cardWidth ?? (isTablet || isPhoneLandscape ? "48.8%" : "100%")) as any,
+        marginBottom: isTablet ? 16 : isPhoneLandscape ? 12 : 14,
       }}
     >
       <View
         style={{
-          height: isTablet ? 310 : 280,
-          borderRadius: isTablet ? 24 : 20,
+          minHeight: minCardHeight,
+          borderRadius: isTablet ? 22 : 18,
           overflow: "hidden",
           backgroundColor: "#1E1B4B",
           borderWidth: 2,
@@ -160,29 +170,29 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         )}
 
         <LinearGradient
-          colors={["rgba(15, 23, 42, 0.55)", "transparent"]}
+          colors={["rgba(15, 23, 42, 0.62)", "transparent"]}
           style={{
             position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            height: 70,
+            height: 68,
           }}
         />
 
         <LinearGradient
           colors={[
             "transparent",
-            "rgba(30, 27, 75, 0.72)",
-            "rgba(28, 25, 23, 0.96)",
+            "rgba(20, 18, 52, 0.72)",
+            "rgba(24, 21, 19, 0.97)",
           ]}
-          locations={[0, 0.4, 1]}
+          locations={[0, 0.36, 1]}
           style={{
             position: "absolute",
             left: 0,
             right: 0,
             bottom: 0,
-            height: 215,
+            height: "78%",
           }}
         />
 
@@ -190,7 +200,8 @@ export const HeroCard: React.FC<HeroCardProps> = ({
           style={{
             flex: 1,
             justifyContent: "space-between",
-            padding: isTablet ? 16 : 13,
+            padding: isPhoneLandscape ? 12 : isTablet ? 15 : 13,
+            gap: isPhoneLandscape ? 26 : 40,
           }}
         >
           {/* Top Row: Category Pill + Chapter Progress Pill */}
@@ -199,29 +210,32 @@ export const HeroCard: React.FC<HeroCardProps> = ({
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 8,
+              gap: 6,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                paddingHorizontal: 10,
-                paddingVertical: 5,
+                paddingHorizontal: 9,
+                paddingVertical: 4,
                 borderRadius: 999,
                 backgroundColor: categoryTheme.bg,
-                borderBottomWidth: 2.5,
+                borderBottomWidth: 2,
                 borderBottomColor: categoryTheme.borderBottom,
+                flexShrink: 1,
               }}
             >
               {categoryTheme.icon}
               <Text
                 style={{
                   color: "#FFFFFF",
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: "900",
-                  marginLeft: 5,
+                  marginLeft: 4,
+                  flexShrink: 1,
                 }}
+                numberOfLines={1}
               >
                 {hero.heroClassLabel ?? hero.classBadgeLabel}
               </Text>
@@ -229,16 +243,17 @@ export const HeroCard: React.FC<HeroCardProps> = ({
 
             <View
               style={{
-                paddingHorizontal: 10,
+                paddingHorizontal: 9,
                 paddingVertical: 4,
                 borderRadius: 999,
                 backgroundColor: allHeroChaptersCompleted
                   ? "#10B981"
-                  : "rgba(28, 25, 23, 0.82)",
+                  : "rgba(28, 25, 23, 0.85)",
                 borderWidth: 1,
                 borderColor: allHeroChaptersCompleted
                   ? "#A7F3D0"
                   : "rgba(251, 191, 36, 0.55)",
+                flexShrink: 0,
               }}
             >
               <Text
@@ -258,7 +273,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
             <Text
               style={{
                 color: "#FFFFFF",
-                fontSize: isTablet ? 21 : 19,
+                fontSize: isPhoneLandscape ? 17 : isTablet ? 20 : 18.5,
                 fontWeight: "900",
               }}
               numberOfLines={1}
@@ -269,7 +284,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
             <Text
               style={{
                 color: "#FDE68A",
-                fontSize: 12.5,
+                fontSize: isPhoneLandscape ? 11.5 : 12.5,
                 fontWeight: "700",
                 marginTop: 2,
                 marginBottom: 8,
@@ -283,14 +298,11 @@ export const HeroCard: React.FC<HeroCardProps> = ({
 
             {/* Multi-Chapter Quick Selector Pills */}
             {hero.chapters.length > 1 && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginBottom: 8,
-                }}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 8 }}
+                contentContainerStyle={{ gap: 6, alignItems: "center" }}
               >
                 {hero.chapters.map((ch, idx) => {
                   const isSelected = idx === selectedChapterIdx;
@@ -303,7 +315,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                       scaleTo={0.95}
                       style={{
                         paddingHorizontal: 9,
-                        paddingVertical: 4,
+                        paddingVertical: 5,
                         borderRadius: 10,
                         flexDirection: "row",
                         alignItems: "center",
@@ -335,7 +347,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                     </BouncyPressable>
                   );
                 })}
-              </View>
+              </ScrollView>
             )}
 
             {/* Clean CTA Button */}
@@ -344,9 +356,9 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                 onPress={() => onPress(activeChapter.id)}
                 scaleTo={0.97}
                 style={{
-                  borderRadius: 14,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
+                  borderRadius: 13,
+                  paddingHorizontal: 13,
+                  paddingVertical: isPhoneLandscape ? 8 : 10,
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -369,7 +381,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                     <CheckCircle2 size={15} color="#FFFFFF" />
                   ) : (
                     <Play
-                      size={14}
+                      size={13}
                       color={isActiveInProgress ? "#1C1917" : "#FFFFFF"}
                       fill={isActiveInProgress ? "#1C1917" : "#FFFFFF"}
                     />
@@ -377,7 +389,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                   <Text
                     style={{
                       color: isActiveInProgress ? "#1C1917" : "#FFFFFF",
-                      fontSize: 13,
+                      fontSize: isPhoneLandscape ? 12 : 13,
                       fontWeight: "900",
                       marginLeft: 6,
                       flexShrink: 1,
@@ -387,7 +399,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                     {isActiveDone
                       ? "Tamamlandı • Tekrar Oku"
                       : isActiveInProgress
-                      ? `Devam Et (Sahne ${(activeSavedSceneIdx ?? 0) + 1}/${
+                      ? `Devam Et (${(activeSavedSceneIdx ?? 0) + 1}/${
                           activeChapter.scenes.length
                         })`
                       : "Hikâyeye Başla"}
@@ -399,6 +411,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
                     color: isActiveInProgress ? "#1C1917" : "#ECFDF5",
                     fontSize: 11,
                     fontWeight: "800",
+                    flexShrink: 0,
                   }}
                 >
                   {activeChapter.scenes.length} Sahne

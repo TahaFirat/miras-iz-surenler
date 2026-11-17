@@ -6,7 +6,6 @@ import {
   Image,
   Modal,
   Pressable,
-  useWindowDimensions,
   Platform,
 } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -23,6 +22,7 @@ import {
 import { HEROES_DATA } from "../data/storiesData";
 import { useUserStore } from "../store/useUserStore";
 import { resolveImageAsset } from "../utils/imageAssets";
+import { useResponsiveLayout } from "../utils/useResponsiveLayout";
 import { BouncyPressable } from "./BouncyPressable";
 
 type HeroProfile = (typeof HEROES_DATA)[number];
@@ -429,8 +429,14 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
   completedChapters,
   onSelectChapter,
 }) => {
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const {
+    height: windowHeight,
+    isLandscape,
+    isTablet,
+    isPhoneLandscape,
+    isSmallPhone,
+    insets,
+  } = useResponsiveLayout();
   const savedSceneProgress = useUserStore((s) => s.savedSceneProgress);
 
   const [selectedCityId, setSelectedCityId] = useState<string>("istanbul");
@@ -485,8 +491,15 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
     "assets/images/islamic_world_atlas_map.png"
   );
 
-  const medallionSize = isTablet ? 48 : 32;
+  const medallionSize = isTablet ? 44 : isPhoneLandscape ? 32 : isSmallPhone ? 28 : 31;
   const halfMedallion = medallionSize / 2;
+  const mapHeight = isPhoneLandscape
+    ? Math.max(200, Math.min(245, windowHeight * 0.56))
+    : isTablet
+    ? isLandscape
+      ? 360
+      : 380
+    : 225;
 
   return (
     <View style={{ width: "100%", overflow: "hidden" }}>
@@ -497,7 +510,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
         style={{
           width: "100%",
           backgroundColor: "#FFFFFF",
-          borderRadius: isTablet ? 26 : 20,
+          borderRadius: isTablet ? 24 : 20,
           padding: isTablet ? 18 : 12,
           marginBottom: 16,
           borderWidth: 1.5,
@@ -609,124 +622,135 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
           })}
         </ScrollView>
 
-        {/* 100% Width Responsive Map Box (Never overflows right edge!) */}
+        {/* Landscape splits Map + Selected City Side-by-Side; Portrait stacks cleanly */}
         <View
           style={{
-            width: "100%",
-            height: isTablet ? 400 : 230,
-            borderRadius: isTablet ? 22 : 16,
-            overflow: "hidden",
-            borderWidth: isTablet ? 4 : 2.5,
-            borderColor: "#D97706",
-            backgroundColor: "#0C4A6E",
-            position: "relative",
+            flexDirection: isLandscape ? "row" : "column",
+            gap: isLandscape ? 14 : 12,
+            alignItems: isLandscape ? "stretch" : "flex-start",
           }}
         >
-          {atlasMapSource && (
-            <Image
-              source={atlasMapSource}
-              resizeMode="cover"
-              style={{
-                width: "100%",
-                height: "100%",
-                position: "absolute",
-                top: 0,
-                left: 0,
-              }}
-            />
-          )}
-
-          {/* City Medallions */}
-          {ATLAS_CITY_NODES.map((city) => {
-            const isSelected = city.id === selectedCity.id;
-            const medallionSource = resolveImageAsset(city.medallionImage);
-
-            return (
-              <View
-                key={city.id}
+          {/* 100% Width Responsive Map Box */}
+          <View
+            style={{
+              width: isLandscape ? "56%" : "100%",
+              height: mapHeight,
+              borderRadius: isTablet ? 20 : 16,
+              overflow: "hidden",
+              borderWidth: isTablet ? 3 : 2.5,
+              borderColor: "#D97706",
+              backgroundColor: "#0C4A6E",
+              position: "relative",
+            }}
+          >
+            {atlasMapSource && (
+              <Image
+                source={atlasMapSource}
+                resizeMode="cover"
                 style={{
+                  width: "100%",
+                  height: "100%",
                   position: "absolute",
-                  left: `${city.xPercent}%`,
-                  top: `${city.yPercent}%`,
-                  transform: [
-                    { translateX: -halfMedallion },
-                    { translateY: -halfMedallion },
-                  ],
-                  alignItems: "center",
-                  zIndex: isSelected ? 50 : 20,
+                  top: 0,
+                  left: 0,
                 }}
-              >
-                <BouncyPressable
-                  onPress={() => handlePressCityMedallion(city)}
-                  scaleTo={0.93}
-                  style={{ alignItems: "center" }}
-                >
-                  <View
-                    style={{
-                      width: medallionSize,
-                      height: medallionSize,
-                      borderRadius: halfMedallion,
-                      borderWidth: isSelected ? 3 : 2,
-                      borderColor: isSelected ? "#10B981" : "#FBBF24",
-                      backgroundColor: "#1C1917",
-                      overflow: "hidden",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {medallionSource && (
-                      <Image
-                        source={medallionSource}
-                        resizeMode="cover"
-                        style={{ width: "100%", height: "100%" }}
-                      />
-                    )}
-                  </View>
+              />
+            )}
 
-                  {/* Show city label on tablet or only for the selected city on phone to prevent overlap */}
-                  {(isTablet || isSelected) && (
+            {/* City Medallions */}
+            {ATLAS_CITY_NODES.map((city) => {
+              const isSelected = city.id === selectedCity.id;
+              const medallionSource = resolveImageAsset(city.medallionImage);
+
+              return (
+                <View
+                  key={city.id}
+                  style={{
+                    position: "absolute",
+                    left: `${city.xPercent}%`,
+                    top: `${city.yPercent}%`,
+                    transform: [
+                      { translateX: -halfMedallion },
+                      { translateY: -halfMedallion },
+                    ],
+                    alignItems: "center",
+                    zIndex: isSelected ? 50 : 20,
+                  }}
+                >
+                  <BouncyPressable
+                    onPress={() => handlePressCityMedallion(city)}
+                    scaleTo={0.93}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={{ alignItems: "center" }}
+                  >
                     <View
                       style={{
-                        marginTop: 2,
-                        paddingHorizontal: 7,
-                        paddingVertical: 2,
-                        borderRadius: 999,
-                        backgroundColor: isSelected
-                          ? "#0D9488"
-                          : "rgba(28, 25, 23, 0.86)",
-                        borderWidth: 1,
-                        borderColor: isSelected ? "#99F6E4" : "#FBBF24",
+                        width: medallionSize,
+                        height: medallionSize,
+                        borderRadius: halfMedallion,
+                        borderWidth: isSelected ? 3 : 2,
+                        borderColor: isSelected ? "#10B981" : "#FBBF24",
+                        backgroundColor: "#1C1917",
+                        overflow: "hidden",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#FFFFFF",
-                          fontSize: isTablet ? 10.5 : 9.5,
-                          fontWeight: "800",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {city.shortName}
-                      </Text>
+                      {medallionSource && (
+                        <Image
+                          source={medallionSource}
+                          resizeMode="cover"
+                          style={{ width: "100%", height: "100%" }}
+                        />
+                      )}
                     </View>
-                  )}
-                </BouncyPressable>
-              </View>
-            );
-          })}
-        </View>
 
-        {/* Selected City & Hero Chapters Panel */}
-        <View
-          style={{
-            backgroundColor: "#FAF8F5",
-            borderRadius: 16,
-            padding: isTablet ? 14 : 11,
-            marginTop: 12,
-            borderWidth: 1.5,
-            borderColor: "#E7E5E4",
-          }}
-        >
+                    {/* Show city label on tablet or only for the selected city on phone */}
+                    {(isTablet || isSelected) && (
+                      <View
+                        style={{
+                          marginTop: 2,
+                          paddingHorizontal: 7,
+                          paddingVertical: 2,
+                          borderRadius: 999,
+                          backgroundColor: isSelected
+                            ? "#0D9488"
+                            : "rgba(28, 25, 23, 0.86)",
+                          borderWidth: 1,
+                          borderColor: isSelected ? "#99F6E4" : "#FBBF24",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: isTablet ? 10.5 : 9.5,
+                            fontWeight: "800",
+                          }}
+                          numberOfLines={1}
+                        >
+                          {city.shortName}
+                        </Text>
+                      </View>
+                    )}
+                  </BouncyPressable>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Selected City & Hero Chapters Panel */}
+          <View
+            style={{
+              flex: isLandscape ? 1 : undefined,
+              width: isLandscape ? undefined : "100%",
+              backgroundColor: "#FAF8F5",
+              borderRadius: 16,
+              padding: isTablet ? 14 : 11,
+              borderWidth: 1.5,
+              borderColor: "#E7E5E4",
+              justifyContent: "space-between",
+            }}
+          >
           <View
             style={{
               flexDirection: "row",
@@ -876,6 +900,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               );
             })}
           </View>
+        </View>
         </View>
       </View>
 
@@ -1082,7 +1107,10 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
             backgroundColor: "rgba(28, 25, 23, 0.55)",
             alignItems: "center",
             justifyContent: "center",
-            padding: 16,
+            paddingTop: Math.max(16, insets.top + 8),
+            paddingBottom: Math.max(16, insets.bottom + 8),
+            paddingLeft: Math.max(16, insets.left + 8),
+            paddingRight: Math.max(16, insets.right + 8),
           }}
         >
           {chapterModalHero && (
@@ -1091,6 +1119,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               style={{
                 width: "100%",
                 maxWidth: 500,
+                maxHeight: "90%",
                 backgroundColor: "#FAF8F5",
                 borderRadius: 24,
                 borderWidth: 2,
@@ -1100,7 +1129,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
             >
               <View
                 style={{
-                  height: 140,
+                  height: isPhoneLandscape ? 105 : 140,
                   backgroundColor: "#1C1917",
                   position: "relative",
                 }}
@@ -1161,7 +1190,10 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                 </Pressable>
               </View>
 
-              <View style={{ padding: 14, gap: 8 }}>
+              <ScrollView
+                contentContainerStyle={{ padding: 14, gap: 8 }}
+                showsVerticalScrollIndicator={false}
+              >
                 {chapterModalHero.chapters.map((ch) => {
                   const isDone = completedChapters.includes(ch.id);
                   const savedIdx = savedSceneProgress[ch.id];
@@ -1235,7 +1267,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     </BouncyPressable>
                   );
                 })}
-              </View>
+              </ScrollView>
             </Pressable>
           )}
         </Pressable>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   Image,
   Modal,
   Platform,
-  useWindowDimensions,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,11 +16,11 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,7 +29,6 @@ import {
   Lightbulb,
   Gift,
   Landmark,
-  Eye,
   Quote,
   RotateCcw,
   Volume2,
@@ -47,8 +45,8 @@ import {
 } from "../../src/data/storiesData";
 import { useUserStore } from "../../src/store/useUserStore";
 import { resolveImageAsset } from "../../src/utils/imageAssets";
+import { useResponsiveLayout } from "../../src/utils/useResponsiveLayout";
 import { BouncyPressable } from "../../src/components/BouncyPressable";
-import { SceneArtwork } from "../../src/components/SceneArtwork";
 
 type PlayerStage = "SCENES" | "DESTINY" | "TRUTH_REVEALED";
 type SceneCardViewMode = "STORY" | "MID_DECISION";
@@ -64,14 +62,22 @@ const STORYBOOK_PAGE_SHADOW = {
 export default function InteractiveChapterPlayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width, height: windowHeight } = useWindowDimensions();
-  const isTablet = width >= 820;
-  const isSmallPhone = width < 420;
+  const {
+    height: windowHeight,
+    isLandscape,
+    isTablet,
+    isPhoneLandscape,
+    isTabletLandscape,
+    isSmallPhone,
+    insets,
+  } = useResponsiveLayout();
+
+  // Split side-by-side layout on any Landscape screen (phone landscape OR tablet landscape)
+  const isSideBySideSpread = isPhoneLandscape || isTabletLandscape;
 
   const found = getChapterById(id || "");
 
   const completedChapters = useUserStore((s) => s.completedChapters);
-  const savedSceneProgress = useUserStore((s) => s.savedSceneProgress);
   const saveSceneProgress = useUserStore((s) => s.saveSceneProgress);
   const clearSceneProgress = useUserStore((s) => s.clearSceneProgress);
   const completeChapter = useUserStore((s) => s.completeChapter);
@@ -87,18 +93,13 @@ export default function InteractiveChapterPlayerScreen() {
   const [sceneViewMode, setSceneViewMode] =
     useState<SceneCardViewMode>("STORY");
 
-  // Turkish TTS (expo-speech) state
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  // Collapsible "💡 Bunu Biliyor muydun?" state
   const [showHistoricalNote, setShowHistoricalNote] = useState(false);
 
-  // Scene 4 Mid-Decision ("Ara Karar") state
   const [selectedMidOption, setSelectedMidOption] =
     useState<MidDecisionOption | null>(null);
   const [midDecisionSolved, setMidDecisionSolved] = useState(false);
 
-  // Final Destiny Moment choices state
   const [triedWrongOptions, setTriedWrongOptions] = useState<string[]>([]);
   const [activeFeedbackOption, setActiveFeedbackOption] =
     useState<DestinyOption | null>(null);
@@ -106,15 +107,14 @@ export default function InteractiveChapterPlayerScreen() {
     "A" | "B" | "C"
   >("C");
 
-  // Treasure Chest Modal state (NEVER opens automatically!)
   const [chestModalVisible, setChestModalVisible] = useState(false);
   const [isChestOpened, setIsChestOpened] = useState(false);
 
-  // Animations (200ms smooth opacity fade-in, zero vertical jump)
+  const cardScrollRef = useRef<ScrollView>(null);
+
   const cardFade = useSharedValue(1);
   const goldenFlashOpacity = useSharedValue(0);
   const chestScale = useSharedValue(0.92);
-  const chestGlow = useSharedValue(0.5);
 
   const currentScene = found
     ? found.chapter.scenes[
@@ -122,7 +122,6 @@ export default function InteractiveChapterPlayerScreen() {
       ]
     : null;
 
-  // Safe Haptics helpers
   const triggerLightHaptic = () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -145,7 +144,6 @@ export default function InteractiveChapterPlayerScreen() {
     }
   };
 
-  // Stop speech helper
   const stopTurkishSpeech = () => {
     try {
       Speech.stop();
@@ -155,7 +153,6 @@ export default function InteractiveChapterPlayerScreen() {
     setIsSpeaking(false);
   };
 
-  // Initialize / restore auto-bookmark when chapter id changes
   useEffect(() => {
     stopTurkishSpeech();
     if (!found) return;
@@ -167,8 +164,6 @@ export default function InteractiveChapterPlayerScreen() {
       .completedChapters.includes(chId);
     const savedIdx = useUserStore.getState().savedSceneProgress[chId];
 
-    // If chapter was already completed, start at Scene 1 (index 0) and unlock all segments.
-    // Otherwise resume from savedSceneProgress bookmark!
     const initialIdx =
       !alreadyDone &&
       typeof savedIdx === "number" &&
@@ -195,7 +190,6 @@ export default function InteractiveChapterPlayerScreen() {
     }
   }, [id]);
 
-  // Save scene progress (auto-bookmark) whenever sceneIndex changes on an uncompleted chapter
   useEffect(() => {
     if (!found || stage !== "SCENES") return;
     const chId = found.chapter.id;
@@ -209,7 +203,11 @@ export default function InteractiveChapterPlayerScreen() {
     }
   }, [sceneIndex, stage, isChapterCompleted, found?.chapter.id]);
 
-  // Toggle Turkish TTS reading for given text
+  // Auto-reset scroll position to top when scene, mode, or stage changes
+  useEffect(() => {
+    cardScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [sceneIndex, sceneViewMode, stage]);
+
   const handleToggleSpeech = (textToSpeak: string) => {
     triggerLightHaptic();
     if (isSpeaking) {
@@ -233,7 +231,6 @@ export default function InteractiveChapterPlayerScreen() {
     }
   };
 
-  // Cleanup speech on unmount
   useEffect(() => {
     return () => {
       try {
@@ -244,7 +241,6 @@ export default function InteractiveChapterPlayerScreen() {
     };
   }, []);
 
-  // Smooth 200ms fade-in effect when scene changes + pre-solve Ara Karar if chapter is already completed
   useEffect(() => {
     stopTurkishSpeech();
     setShowHistoricalNote(false);
@@ -270,7 +266,6 @@ export default function InteractiveChapterPlayerScreen() {
     });
   }, [sceneIndex, stage, currentScene?.id, isChapterCompleted]);
 
-  // Trigger subtle warm screen flash when entering DESTINY or TRUTH_REVEALED
   const triggerGoldenScreenFlash = () => {
     goldenFlashOpacity.value = 0.35;
     goldenFlashOpacity.value = withTiming(0, {
@@ -279,19 +274,10 @@ export default function InteractiveChapterPlayerScreen() {
     });
   };
 
-  // Animate chest modal pulse
   useEffect(() => {
     if (chestModalVisible) {
       chestScale.value = 0.9;
       chestScale.value = withSpring(1, { damping: 14, stiffness: 180 });
-      chestGlow.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 1200 }),
-          withTiming(0.5, { duration: 1200 })
-        ),
-        -1,
-        true
-      );
     }
   }, [chestModalVisible, isChestOpened]);
 
@@ -305,10 +291,6 @@ export default function InteractiveChapterPlayerScreen() {
 
   const chestAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: chestScale.value }],
-  }));
-
-  const chestGlowStyle = useAnimatedStyle(() => ({
-    opacity: chestGlow.value,
   }));
 
   if (!found || !currentScene) {
@@ -337,15 +319,17 @@ export default function InteractiveChapterPlayerScreen() {
               stopTurkishSpeech();
               router.back();
             }}
-            className="rounded-2xl px-6 py-3.5 items-center justify-center"
             style={{
               backgroundColor: "#10B981",
+              borderRadius: 16,
+              paddingHorizontal: 24,
+              paddingVertical: 14,
               borderBottomWidth: 4,
               borderBottomColor: "#047857",
             }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
-              Keşif Haritasına Dön
+              Ana Menüye Dön
             </Text>
           </BouncyPressable>
         </SafeAreaView>
@@ -359,7 +343,6 @@ export default function InteractiveChapterPlayerScreen() {
     chapter.rewardArtifact.imagePath
   );
 
-  // Find next chapter of this hero OR the next chapter in the global curriculum
   const currentChapterIdx = hero.chapters.findIndex(
     (ch) => ch.id === chapter.id
   );
@@ -382,7 +365,6 @@ export default function InteractiveChapterPlayerScreen() {
     ? hero.name
     : nextGlobalItem?.hero.name ?? "";
 
-  // Bind each scene directly to its own scene.imageKey / scene.imagePath
   const activeArtworkPath =
     stage === "SCENES"
       ? currentScene.imageKey ?? currentScene.imagePath
@@ -395,11 +377,7 @@ export default function InteractiveChapterPlayerScreen() {
           chapter.rewardArtifact.imagePath
       : chapter.rewardArtifact.imagePath;
 
-  const activeAtmosphere =
-    stage === "SCENES"
-      ? currentScene.atmosphereType
-      : chapter.scenes[totalScenes - 1]?.atmosphereType ?? "NIGHT_LANTERN";
-
+  const activeArtworkSource = resolveImageAsset(activeArtworkPath);
   const hasMidDecision = Boolean(currentScene.midDecision);
 
   const handleSelectMidDecision = (opt: MidDecisionOption) => {
@@ -428,8 +406,6 @@ export default function InteractiveChapterPlayerScreen() {
       return;
     }
 
-    // If this scene has an Ara Karar and the user is still reading the STORY tab (and chapter is not already completed),
-    // clicking the main bottom button switches directly to the Ara Karar view without scrolling!
     if (hasMidDecision && !midDecisionSolved) {
       if (sceneViewMode === "STORY") {
         setSceneViewMode("MID_DECISION");
@@ -468,7 +444,6 @@ export default function InteractiveChapterPlayerScreen() {
     }
   };
 
-  // Keyboard ArrowRight / ArrowLeft support for Web & Tablet keyboards
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
 
@@ -503,8 +478,6 @@ export default function InteractiveChapterPlayerScreen() {
     setSelectedDestinyOptionId(option.id);
     clearSceneProgress(chapter.id);
     triggerGoldenScreenFlash();
-    // Critical UX rule: NEVER auto-open the chest modal here!
-    // Let the child read "Tarihte Gerçekten Ne Oldu?" first in peace.
     setStage("TRUTH_REVEALED");
   };
 
@@ -523,310 +496,410 @@ export default function InteractiveChapterPlayerScreen() {
     setSceneIndex(targetIdx);
   };
 
-  // RESPONSIVE, CLEAN TOP BAR WITH 9 CLICKABLE PROGRESS SEGMENTS
-  const renderTopBar = () => (
+  // Horizontal container padding respecting safe areas
+  const containerPadX = isPhoneLandscape ? 12 : isTablet ? 24 : 12;
+
+  // Compact Top Progress Segments
+  const renderProgressSegments = () => (
     <View
       style={{
-        maxWidth: 1140,
-        alignSelf: "center",
-        width: "100%",
-        paddingHorizontal: isTablet ? 24 : 12,
-        paddingTop: isTablet ? 8 : 4,
-        paddingBottom: isTablet ? 10 : 6,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: isTablet ? 6 : 4,
+        flex: isPhoneLandscape ? 1 : undefined,
+        width: isPhoneLandscape ? undefined : "100%",
       }}
     >
-      {/* Row 1: Back Button + Hero/Chapter Title + Scene Counter Pill */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          marginBottom: isTablet ? 8 : 5,
-        }}
-      >
-        <BouncyPressable
-          onPress={() => {
-            stopTurkishSpeech();
-            router.back();
-          }}
-          scaleTo={0.96}
-          className="rounded-xl flex-row items-center"
+      {chapter.scenes.map((sceneItem, idx) => {
+        const isCurrent = stage === "SCENES" && idx === sceneIndex;
+        const isPassed =
+          stage !== "SCENES" || idx < sceneIndex || isChapterCompleted;
+        const isUnlocked =
+          isChapterCompleted || idx <= maxReachedSceneIdx || idx <= sceneIndex;
+
+        const bgColor = isCurrent
+          ? "#F59E0B"
+          : isPassed
+          ? "#10B981"
+          : isUnlocked
+          ? "#A7F3D0"
+          : "#E6DEC8";
+
+        return (
+          <BouncyPressable
+            key={sceneItem.id}
+            onPress={() => handleJumpToScene(idx)}
+            scaleTo={0.95}
+            hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
+            style={{
+              flex: 1,
+              paddingVertical: 3,
+            }}
+          >
+            <View
+              style={{
+                height: isCurrent ? (isTablet ? 8 : 7) : isTablet ? 6 : 5,
+                borderRadius: 999,
+                backgroundColor: bgColor,
+                borderWidth: isCurrent ? 1 : 0,
+                borderColor: "#B45309",
+              }}
+            />
+          </BouncyPressable>
+        );
+      })}
+    </View>
+  );
+
+  // TOP BAR: Single ultra-sleek row in Phone Landscape; clean 2-row header in Portrait & Tablet
+  const renderTopBar = () => {
+    if (isPhoneLandscape) {
+      return (
+        <View
           style={{
-            paddingHorizontal: isTablet ? 14 : 10,
-            paddingVertical: isTablet ? 8 : 6,
-            backgroundColor: "#FFFDF7",
-            borderWidth: 1.5,
-            borderColor: "#E6DEC8",
-            borderBottomWidth: 3.5,
-            borderBottomColor: "#D6CBB2",
             flexShrink: 0,
+            paddingHorizontal: containerPadX,
+            paddingTop: 4,
+            paddingBottom: 6,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
           }}
         >
-          <ArrowLeft size={isTablet ? 16 : 14} color="#1C1917" />
+          <BouncyPressable
+            onPress={() => {
+              stopTurkishSpeech();
+              router.back();
+            }}
+            scaleTo={0.96}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 11,
+              backgroundColor: "#FFFDF7",
+              borderWidth: 1.5,
+              borderColor: "#E6DEC8",
+              borderBottomWidth: 3,
+              borderBottomColor: "#D6CBB2",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <ArrowLeft size={14} color="#1C1917" />
+            <Text
+              style={{
+                color: "#1C1917",
+                fontSize: 11.5,
+                fontWeight: "900",
+                marginLeft: 4,
+              }}
+            >
+              Çıkış
+            </Text>
+          </BouncyPressable>
+
           <Text
             style={{
               color: "#1C1917",
-              fontSize: isTablet ? 13 : 12,
+              fontSize: 12.5,
               fontWeight: "900",
-              marginLeft: 5,
+              maxWidth: 180,
             }}
+            numberOfLines={1}
           >
-            Ana Menü
+            {hero.name} • B{chapter.chapterNumber}
           </Text>
-        </BouncyPressable>
 
-        {/* Center Title (Single clean line on mobile & tablet, never squished) */}
-        <View style={{ flex: 1, paddingHorizontal: 4 }}>
+          {renderProgressSegments()}
+
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: isTablet ? "flex-end" : "center",
-              gap: 6,
+              paddingHorizontal: 9,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: "#FFFDF7",
+              borderWidth: 1.5,
+              borderColor: "#E6DEC8",
             }}
           >
             <Text
               style={{
-                color: "#0D9488",
-                fontSize: isTablet ? 12 : 11,
+                color: "#1C1917",
+                fontSize: 11,
                 fontWeight: "900",
+              }}
+            >
+              {stage === "SCENES"
+                ? `${currentScene.sceneNumber}/${totalScenes}`
+                : "Kader Anı"}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={{
+          flexShrink: 0,
+          maxWidth: 1140,
+          alignSelf: "center",
+          width: "100%",
+          paddingHorizontal: containerPadX,
+          paddingTop: isTablet ? 8 : 4,
+          paddingBottom: isTablet ? 10 : 6,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: isTablet ? 7 : 5,
+          }}
+        >
+          <BouncyPressable
+            onPress={() => {
+              stopTurkishSpeech();
+              router.back();
+            }}
+            scaleTo={0.96}
+            style={{
+              paddingHorizontal: isTablet ? 13 : 10,
+              paddingVertical: isTablet ? 7 : 6,
+              borderRadius: 12,
+              backgroundColor: "#FFFDF7",
+              borderWidth: 1.5,
+              borderColor: "#E6DEC8",
+              borderBottomWidth: 3,
+              borderBottomColor: "#D6CBB2",
+              flexDirection: "row",
+              alignItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <ArrowLeft size={isTablet ? 15 : 14} color="#1C1917" />
+            <Text
+              style={{
+                color: "#1C1917",
+                fontSize: isTablet ? 13 : 11.5,
+                fontWeight: "900",
+                marginLeft: 4,
+              }}
+            >
+              Ana Menü
+            </Text>
+          </BouncyPressable>
+
+          <View style={{ flex: 1, paddingHorizontal: 4 }}>
+            <Text
+              style={{
+                color: "#0D9488",
+                fontSize: isTablet ? 12 : 10.5,
+                fontWeight: "900",
+                textAlign: isTablet && isLandscape ? "right" : "center",
               }}
               numberOfLines={1}
             >
               {hero.name} • Bölüm {chapter.chapterNumber}
             </Text>
+            <Text
+              style={{
+                color: "#1C1917",
+                fontSize: isTablet ? 15 : 12.5,
+                fontWeight: "900",
+                textAlign: isTablet && isLandscape ? "right" : "center",
+              }}
+              numberOfLines={1}
+            >
+              {chapter.title}
+            </Text>
           </View>
 
-          <Text
+          <View
             style={{
-              color: "#1C1917",
-              fontSize: isTablet ? 14.5 : 12.5,
-              fontWeight: "900",
-              textAlign: isTablet ? "right" : "center",
-            }}
-            numberOfLines={1}
-          >
-            {chapter.title}
-          </Text>
-        </View>
-
-        {/* Right: Scene Counter Badge */}
-        <View
-          style={{
-            paddingHorizontal: isTablet ? 12 : 9,
-            paddingVertical: isTablet ? 5 : 4,
-            borderRadius: 999,
-            backgroundColor: "#FFFDF7",
-            borderWidth: 1.5,
-            borderColor: "#E6DEC8",
-            flexShrink: 0,
-          }}
-        >
-          <Text
-            style={{
-              color: "#1C1917",
-              fontSize: isTablet ? 12 : 11,
-              fontWeight: "900",
+              paddingHorizontal: isTablet ? 11 : 9,
+              paddingVertical: isTablet ? 5 : 4,
+              borderRadius: 999,
+              backgroundColor: "#FFFDF7",
+              borderWidth: 1.5,
+              borderColor: "#E6DEC8",
+              flexShrink: 0,
             }}
           >
-            {stage === "SCENES"
-              ? `${currentScene.sceneNumber} / ${totalScenes}`
-              : "Kader Anı"}
-          </Text>
-        </View>
-      </View>
-
-      {/* Row 2: Clickable Segmented Progress Bar (Jump to any unlocked/completed scene) */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: isTablet ? 6 : 4,
-          width: "100%",
-        }}
-      >
-        {chapter.scenes.map((sceneItem, idx) => {
-          const isCurrent = stage === "SCENES" && idx === sceneIndex;
-          const isPassed =
-            stage !== "SCENES" || idx < sceneIndex || isChapterCompleted;
-          const isUnlocked =
-            isChapterCompleted || idx <= maxReachedSceneIdx || idx <= sceneIndex;
-
-          const bgColor = isCurrent
-            ? "#F59E0B"
-            : isPassed
-            ? "#10B981"
-            : isUnlocked
-            ? "#A7F3D0"
-            : "#E6DEC8";
-
-          return (
-            <BouncyPressable
-              key={sceneItem.id}
-              onPress={() => handleJumpToScene(idx)}
-              scaleTo={0.95}
+            <Text
               style={{
-                flex: 1,
-                paddingVertical: 4,
+                color: "#1C1917",
+                fontSize: isTablet ? 12 : 11,
+                fontWeight: "900",
               }}
             >
-              <View
-                style={{
-                  height: isCurrent ? (isTablet ? 9 : 7) : isTablet ? 7 : 5,
-                  borderRadius: 999,
-                  backgroundColor: bgColor,
-                  borderWidth: isCurrent ? 1 : 0,
-                  borderColor: "#B45309",
-                }}
-              />
-            </BouncyPressable>
-          );
-        })}
+              {stage === "SCENES"
+                ? `${currentScene.sceneNumber} / ${totalScenes}`
+                : "Kader Anı"}
+            </Text>
+          </View>
+        </View>
+
+        {renderProgressSegments()}
       </View>
-    </View>
-  );
+    );
+  };
 
-  // Compute responsive card heights: Left image strictly pinned at 520px on Tablet/Desktop; Right card maxHeight 560px with internal ScrollView
-  const desktopCardHeight = 520;
-  const desktopRightMaxHeight = 560;
-  const mobileArtworkCardHeight = windowHeight < 740 ? 156 : 176;
-  const mobileArtworkImageHeight = mobileArtworkCardHeight - 36;
-  const mobileRightCardHeight = Math.max(
-    330,
-    Math.min(480, windowHeight - mobileArtworkCardHeight - 108)
-  );
+  // Portrait artwork height scales smoothly with screen height (no tiny crushed 120px strip!)
+  const portraitArtworkHeight = isTablet
+    ? Math.round(Math.max(300, Math.min(400, windowHeight * 0.34)))
+    : Math.round(Math.max(168, Math.min(238, windowHeight * 0.27)));
 
-  // LEFT ILLUSTRATED STORYBOOK PAGE (Strictly Pinned 520px on Tablet/Desktop, Compact Panoramic on Phone)
+  // ILLUSTRATED SCENE ARTWORK PANEL
   const renderArtworkPanel = () => {
-    const cardHeight = isTablet ? 520 : mobileArtworkCardHeight;
-    const imageHeight = isTablet ? 426 : mobileArtworkImageHeight;
-    const footerHeight = cardHeight - imageHeight - 6;
+    const captionTitle =
+      stage === "SCENES"
+        ? currentScene.title
+        : stage === "DESTINY"
+        ? chapter.destinyMoment.title
+        : chapter.rewardArtifact.name;
+
+    const captionTag =
+      stage === "SCENES"
+        ? `SAHNE ${currentScene.sceneNumber}`
+        : stage === "DESTINY"
+        ? "KADER ANI"
+        : "KAZANILAN ESER";
 
     return (
       <View
         style={[
           {
             width: "100%",
-            height: cardHeight,
-            minHeight: cardHeight,
-            maxHeight: cardHeight,
-            alignSelf: "flex-start",
-            flexShrink: 0,
-            backgroundColor: "#FFFDF7",
-            borderRadius: isTablet ? 26 : 20,
+            height: isSideBySideSpread ? "100%" : portraitArtworkHeight,
+            borderRadius: isTablet ? 24 : 18,
             borderWidth: 2,
             borderColor: "#E6DEC8",
-            borderBottomWidth: isTablet ? 6 : 4,
+            borderBottomWidth: isSideBySideSpread || isTablet ? 5 : 4,
             borderBottomColor: "#D6CBB2",
+            backgroundColor: "#1E1B4B",
             overflow: "hidden",
+            position: "relative",
           },
           STORYBOOK_PAGE_SHADOW,
         ]}
       >
-        <View
-          style={{
-            height: imageHeight,
-            minHeight: imageHeight,
-            maxHeight: imageHeight,
-            flexShrink: 0,
-          }}
-        >
-          <SceneArtwork
-            imagePath={activeArtworkPath}
-            atmosphereType={activeAtmosphere}
-            visualMode={hero.visualMode}
-            height={imageHeight}
-            showBottomGradient={false}
+        {activeArtworkSource && (
+          <Image
+            key={activeArtworkPath}
+            source={activeArtworkSource}
+            fadeDuration={0}
+            resizeMode="cover"
+            style={{ width: "100%", height: "100%" }}
           />
-        </View>
+        )}
 
-        {/* Scene Caption Footer */}
-        <View
+        <LinearGradient
+          pointerEvents="none"
+          colors={["transparent", "rgba(15, 23, 42, 0.32)", "rgba(15, 23, 42, 0.90)"]}
+          locations={[0.45, 0.72, 1]}
           style={{
-            height: footerHeight,
-            minHeight: footerHeight,
-            maxHeight: footerHeight,
-            flexShrink: 0,
-            justifyContent: "center",
-            backgroundColor: "#FFFDF7",
-            paddingHorizontal: isTablet ? 20 : 12,
-            borderTopWidth: 1.5,
-            borderTopColor: "#E6DEC8",
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: isTablet ? 105 : 80,
+          }}
+        />
+
+        {/* Sleek Bottom Caption Overlay inside the frame */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingHorizontal: isTablet ? 18 : 12,
+            paddingBottom: isTablet ? 14 : 9,
+            paddingTop: 12,
           }}
         >
-          {isTablet ? (
-            <>
-              <Text
-                style={{
-                  color: "#0D9488",
-                  fontSize: 11,
-                  fontWeight: "900",
-                  letterSpacing: 0.6,
-                  textTransform: "uppercase",
-                  marginBottom: 2,
-                }}
-                numberOfLines={1}
-              >
-                {stage === "SCENES"
-                  ? `${hero.name} • Sahne ${currentScene.sceneNumber}`
-                  : `${hero.name} • Karar Zamanı`}
-              </Text>
-              <Text
-                style={{
-                  color: "#1C1917",
-                  fontSize: 17.5,
-                  lineHeight: 22,
-                  fontWeight: "900",
-                }}
-                numberOfLines={1}
-              >
-                {stage === "SCENES"
-                  ? currentScene.title
-                  : chapter.destinyMoment.title}
-              </Text>
-            </>
-          ) : (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
+                backgroundColor: "#F59E0B",
+                paddingHorizontal: 7,
+                paddingVertical: 2,
+                borderRadius: 6,
               }}
             >
               <Text
                 style={{
-                  color: "#0D9488",
-                  fontSize: 11,
-                  fontWeight: "900",
-                  textTransform: "uppercase",
-                }}
-              >
-                {stage === "SCENES"
-                  ? `SAHNE ${currentScene.sceneNumber}:`
-                  : "KARAR:"}
-              </Text>
-              <Text
-                style={{
                   color: "#1C1917",
-                  fontSize: 13,
+                  fontSize: isTablet ? 10.5 : 9.5,
                   fontWeight: "900",
-                  flex: 1,
+                  letterSpacing: 0.4,
                 }}
-                numberOfLines={1}
               >
-                {stage === "SCENES"
-                  ? currentScene.title
-                  : chapter.destinyMoment.title}
+                {captionTag}
               </Text>
             </View>
-          )}
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: isTablet ? 16.5 : isPhoneLandscape ? 13 : 13.5,
+                fontWeight: "900",
+                flex: 1,
+                textShadowColor: "rgba(0,0,0,0.6)",
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+              }}
+              numberOfLines={1}
+            >
+              {captionTitle}
+            </Text>
+          </View>
         </View>
       </View>
     );
   };
 
-  // RIGHT WARM PARCHMENT STORYBOOK PAGE (maxHeight: 560, Pinned Top Header + Internal ScrollView + Pinned Bottom Buttons)
+  // AUDIO BUTTON HELPER
+  const renderSpeechButton = (textToSpeak: string) => (
+    <BouncyPressable
+      onPress={() => handleToggleSpeech(textToSpeak)}
+      scaleTo={0.96}
+      style={{
+        paddingHorizontal: isTablet ? 12 : 10,
+        paddingVertical: isTablet ? 6 : 5,
+        borderRadius: 11,
+        backgroundColor: isSpeaking ? "#F43F5E" : "#F59E0B",
+        borderWidth: 1,
+        borderColor: isSpeaking ? "#FDA4AF" : "#FDE68A",
+        borderBottomWidth: 3,
+        borderBottomColor: isSpeaking ? "#BE123C" : "#B45309",
+        flexDirection: "row",
+        alignItems: "center",
+        flexShrink: 0,
+      }}
+    >
+      {isSpeaking ? (
+        <VolumeX size={13} color="#FFFFFF" />
+      ) : (
+        <Volume2 size={13} color="#1C1917" />
+      )}
+      <Text
+        style={{
+          color: isSpeaking ? "#FFFFFF" : "#1C1917",
+          fontSize: isTablet ? 12 : 11,
+          fontWeight: "900",
+          marginLeft: 4,
+        }}
+      >
+        {isSpeaking ? "Durdur" : "Sesli Dinle"}
+      </Text>
+    </BouncyPressable>
+  );
+
+  // STAGE 1: SCENES READING CARD (flex: 1, zero nested scroll conflict!)
   const renderSceneReadingContent = () => {
     const fullNarration = currentScene.narration || currentScene.text;
     const fullSpeechText =
@@ -844,37 +917,31 @@ export default function InteractiveChapterPlayerScreen() {
             .join(". ");
 
     return (
-      <Animated.View style={[cardAnimatedStyle, { width: "100%" }]}>
+      <Animated.View style={[cardAnimatedStyle, { flex: 1, width: "100%" }]}>
         <View
           style={[
             {
+              flex: 1,
               width: "100%",
-              height: isTablet ? desktopCardHeight : mobileRightCardHeight,
-              minHeight: isTablet ? desktopCardHeight : mobileRightCardHeight,
-              maxHeight: isTablet
-                ? desktopRightMaxHeight
-                : mobileRightCardHeight,
-              alignSelf: "flex-start",
               backgroundColor: "#FFFDF7",
-              borderRadius: isTablet ? 26 : 20,
+              borderRadius: isTablet ? 24 : 18,
               borderWidth: 2,
               borderColor: "#E6DEC8",
-              borderBottomWidth: isTablet ? 6 : 4,
+              borderBottomWidth: isTablet ? 5 : 4,
               borderBottomColor: "#D6CBB2",
-              paddingHorizontal: isTablet ? 22 : 14,
-              paddingTop: isTablet ? 14 : 12,
-              paddingBottom: isTablet ? 14 : 12,
-              justifyContent: "space-between",
+              paddingHorizontal: isTablet ? 20 : isPhoneLandscape ? 14 : 13,
+              paddingTop: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
+              paddingBottom: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
               overflow: "hidden",
             },
             STORYBOOK_PAGE_SHADOW,
           ]}
         >
-          {/* PINNED TOP HEADER: Always preserves "HİKÂYE KİTABI • SAYFA X" + "Sesli Dinle" */}
+          {/* Pinned Top Card Header */}
           <View
             style={{
               flexShrink: 0,
-              paddingBottom: isTablet ? 9 : 8,
+              paddingBottom: isPhoneLandscape ? 6 : 8,
               borderBottomWidth: 1.5,
               borderBottomColor: "#E6DEC8",
               gap: 6,
@@ -895,63 +962,32 @@ export default function InteractiveChapterPlayerScreen() {
                   flexShrink: 1,
                 }}
               >
-                <BookOpen size={isTablet ? 15 : 14} color="#D97706" />
+                <BookOpen size={isTablet ? 15 : 13} color="#D97706" />
                 <Text
                   style={{
                     color: "#92400E",
                     fontSize: isTablet ? 12 : 11,
                     fontWeight: "900",
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                     textTransform: "uppercase",
-                    marginLeft: 6,
+                    marginLeft: 5,
                   }}
                   numberOfLines={1}
                 >
-                  HİKÂYE KİTABI • SAYFA {currentScene.sceneNumber}
+                  SAYFA {currentScene.sceneNumber} / {totalScenes}
                 </Text>
               </View>
 
-              <BouncyPressable
-                onPress={() => handleToggleSpeech(fullSpeechText)}
-                scaleTo={0.96}
-                className="rounded-xl flex-row items-center"
-                style={{
-                  paddingHorizontal: isTablet ? 12 : 10,
-                  paddingVertical: isTablet ? 6 : 5,
-                  backgroundColor: isSpeaking ? "#F43F5E" : "#F59E0B",
-                  borderWidth: 1,
-                  borderColor: isSpeaking ? "#FDA4AF" : "#FDE68A",
-                  borderBottomWidth: 3,
-                  borderBottomColor: isSpeaking ? "#BE123C" : "#B45309",
-                  flexShrink: 0,
-                }}
-              >
-                {isSpeaking ? (
-                  <VolumeX size={14} color="#FFFFFF" />
-                ) : (
-                  <Volume2 size={14} color="#1C1917" />
-                )}
-                <Text
-                  style={{
-                    color: isSpeaking ? "#FFFFFF" : "#1C1917",
-                    fontSize: isTablet ? 12 : 11,
-                    fontWeight: "900",
-                    marginLeft: 5,
-                  }}
-                >
-                  {isSpeaking ? "Durdur" : "Sesli Dinle"}
-                </Text>
-              </BouncyPressable>
+              {renderSpeechButton(fullSpeechText)}
             </View>
 
-            {/* Scene 4 Mode Switcher Pill Row (Below the preserved top header so it never hides Page 4 title) */}
             {hasMidDecision && (
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   backgroundColor: "#F3EDE0",
-                  borderRadius: 11,
+                  borderRadius: 10,
                   padding: 3,
                   gap: 4,
                   alignSelf: "flex-start",
@@ -965,7 +1001,7 @@ export default function InteractiveChapterPlayerScreen() {
                   }}
                   scaleTo={0.97}
                   style={{
-                    paddingHorizontal: isTablet ? 12 : 9,
+                    paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 8,
                     backgroundColor:
@@ -976,7 +1012,7 @@ export default function InteractiveChapterPlayerScreen() {
                     style={{
                       color:
                         sceneViewMode === "STORY" ? "#1C1917" : "#78716C",
-                      fontSize: isTablet ? 11.5 : 11,
+                      fontSize: 11.5,
                       fontWeight: "900",
                     }}
                   >
@@ -992,7 +1028,7 @@ export default function InteractiveChapterPlayerScreen() {
                   }}
                   scaleTo={0.97}
                   style={{
-                    paddingHorizontal: isTablet ? 12 : 9,
+                    paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 8,
                     backgroundColor:
@@ -1011,7 +1047,7 @@ export default function InteractiveChapterPlayerScreen() {
                             ? "#FFFFFF"
                             : "#1C1917"
                           : "#B45309",
-                      fontSize: isTablet ? 11.5 : 11,
+                      fontSize: 11.5,
                       fontWeight: "900",
                     }}
                   >
@@ -1022,29 +1058,27 @@ export default function InteractiveChapterPlayerScreen() {
             )}
           </View>
 
-          {/* INTERNAL SCROLLABLE MIDDLE CONTENT: Keeps top header & bottom buttons 100% pinned! */}
+          {/* Smooth Scrollable Middle Content */}
           <ScrollView
+            ref={cardScrollRef}
             style={{ flex: 1 }}
             contentContainerStyle={{
-              paddingVertical: isTablet ? 10 : 8,
+              paddingVertical: isPhoneLandscape ? 8 : 10,
               flexGrow: 1,
-              justifyContent: "center",
             }}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled
+            showsVerticalScrollIndicator
           >
             {sceneViewMode === "MID_DECISION" && currentScene.midDecision ? (
-              /* DEDICATED ARA KARAR VIEW */
               <View style={{ justifyContent: "center" }}>
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    marginBottom: 6,
+                    marginBottom: 5,
                   }}
                 >
                   <Sparkles
-                    size={16}
+                    size={15}
                     color={midDecisionSolved ? "#10B981" : "#D97706"}
                   />
                   <Text
@@ -1052,9 +1086,8 @@ export default function InteractiveChapterPlayerScreen() {
                       color: midDecisionSolved ? "#047857" : "#B45309",
                       fontSize: isTablet ? 12.5 : 11.5,
                       fontWeight: "900",
-                      marginLeft: 6,
+                      marginLeft: 5,
                       textTransform: "uppercase",
-                      letterSpacing: 0.4,
                     }}
                   >
                     {currentScene.midDecision.title}
@@ -1065,15 +1098,15 @@ export default function InteractiveChapterPlayerScreen() {
                   style={{
                     color: "#1C1917",
                     fontSize: isTablet ? 16 : 14.5,
-                    lineHeight: isTablet ? 22.5 : 20.5,
+                    lineHeight: isTablet ? 23 : 20.5,
                     fontWeight: "800",
-                    marginBottom: isTablet ? 12 : 9,
+                    marginBottom: 10,
                   }}
                 >
                   {currentScene.midDecision.question}
                 </Text>
 
-                <View style={{ gap: isTablet ? 9 : 8 }}>
+                <View style={{ gap: 8 }}>
                   {currentScene.midDecision.options.map((opt) => {
                     const isSelected = selectedMidOption?.id === opt.id;
                     const borderColor = isSelected
@@ -1097,21 +1130,23 @@ export default function InteractiveChapterPlayerScreen() {
                         key={opt.id}
                         onPress={() => handleSelectMidDecision(opt)}
                         scaleTo={0.98}
-                        className="rounded-2xl flex-row items-center"
                         style={{
-                          paddingHorizontal: isTablet ? 13 : 11,
-                          paddingVertical: isTablet ? 10 : 9,
+                          borderRadius: 15,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
                           backgroundColor: bgColor,
                           borderWidth: 2,
                           borderColor,
-                          borderBottomWidth: 4,
+                          borderBottomWidth: 3.5,
                           borderBottomColor,
+                          flexDirection: "row",
+                          alignItems: "center",
                         }}
                       >
                         <View
                           style={{
-                            width: isTablet ? 30 : 26,
-                            height: isTablet ? 30 : 26,
+                            width: 28,
+                            height: 28,
                             borderRadius: 9,
                             alignItems: "center",
                             justifyContent: "center",
@@ -1121,12 +1156,13 @@ export default function InteractiveChapterPlayerScreen() {
                                 ? "#10B981"
                                 : "#F59E0B"
                               : "#D6CBB2",
+                            flexShrink: 0,
                           }}
                         >
                           <Text
                             style={{
                               color: isSelected ? "#FFFFFF" : "#1C1917",
-                              fontSize: isTablet ? 13.5 : 12.5,
+                              fontSize: 13,
                               fontWeight: "900",
                             }}
                           >
@@ -1136,11 +1172,10 @@ export default function InteractiveChapterPlayerScreen() {
                         <Text
                           style={{
                             color: "#1C1917",
-                            fontSize: isTablet ? 14 : 13,
-                            lineHeight: isTablet ? 19.5 : 18,
+                            fontSize: isTablet ? 14.5 : 13.5,
+                            lineHeight: isTablet ? 20 : 19,
                             fontWeight: "700",
                             flex: 1,
-                            flexShrink: 1,
                           }}
                         >
                           {opt.text}
@@ -1153,10 +1188,10 @@ export default function InteractiveChapterPlayerScreen() {
                 {selectedMidOption && (
                   <View
                     style={{
-                      marginTop: isTablet ? 10 : 8,
+                      marginTop: 10,
                       borderRadius: 14,
                       paddingHorizontal: 12,
-                      paddingVertical: 8,
+                      paddingVertical: 9,
                       backgroundColor: selectedMidOption.isBestChoice
                         ? "#ECFDF5"
                         : "#FFFBEB",
@@ -1171,8 +1206,8 @@ export default function InteractiveChapterPlayerScreen() {
                         color: selectedMidOption.isBestChoice
                           ? "#065F46"
                           : "#92400E",
-                        fontSize: isTablet ? 13 : 12,
-                        lineHeight: isTablet ? 18.5 : 17,
+                        fontSize: isTablet ? 13.5 : 12.5,
+                        lineHeight: isTablet ? 19 : 18,
                         fontWeight: "700",
                       }}
                     >
@@ -1182,10 +1217,8 @@ export default function InteractiveChapterPlayerScreen() {
                 )}
               </View>
             ) : (
-              /* STORY + DIALOGUE + HISTORICAL NOTE VIEW */
-              <View style={{ justifyContent: "space-between" }}>
-                {/* 1. Main Story Narration (minHeight: 180 + 200ms fade-in so screen never jumps) */}
-                <View style={{ minHeight: 180, gap: isTablet ? 8 : 6 }}>
+              <View style={{ gap: isTablet ? 10 : 8 }}>
+                <View style={{ gap: isTablet ? 9 : 7 }}>
                   {fullNarration
                     .split(/\n\n+/)
                     .filter(Boolean)
@@ -1194,8 +1227,8 @@ export default function InteractiveChapterPlayerScreen() {
                         key={pIdx}
                         style={{
                           color: pIdx === 0 ? "#1C1917" : "#292524",
-                          fontSize: isTablet ? 14 : 13.5,
-                          lineHeight: isTablet ? 20.5 : 19.5,
+                          fontSize: isTablet ? 15.5 : isSmallPhone ? 13.5 : 14.5,
+                          lineHeight: isTablet ? 23 : isSmallPhone ? 20 : 21.5,
                           fontWeight: pIdx === 0 ? "600" : "500",
                         }}
                       >
@@ -1204,19 +1237,17 @@ export default function InteractiveChapterPlayerScreen() {
                     ))}
                 </View>
 
-                {/* 2. Character Dialogue Callout */}
                 {currentScene.speaker && currentScene.dialogue ? (
                   <View
                     style={{
-                      marginTop: isTablet ? 9 : 8,
                       backgroundColor: "#FDF8EC",
-                      borderRadius: 15,
+                      borderRadius: 14,
                       borderWidth: 1.5,
                       borderColor: "#FDE68A",
                       borderLeftWidth: 4,
                       borderLeftColor: "#F59E0B",
-                      paddingHorizontal: isTablet ? 13 : 11,
-                      paddingVertical: isTablet ? 8 : 7,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
                     }}
                   >
                     <View
@@ -1240,12 +1271,11 @@ export default function InteractiveChapterPlayerScreen() {
                         {currentScene.speaker}
                       </Text>
                     </View>
-
                     <Text
                       style={{
                         color: "#1C1917",
-                        fontSize: isTablet ? 13.5 : 12.5,
-                        lineHeight: isTablet ? 19 : 17.5,
+                        fontSize: isTablet ? 14 : 13,
+                        lineHeight: isTablet ? 20 : 18.5,
                         fontWeight: "600",
                         fontStyle: "italic",
                       }}
@@ -1255,74 +1285,68 @@ export default function InteractiveChapterPlayerScreen() {
                   </View>
                 ) : null}
 
-                {/* 3. Compact "💡 Bunu Biliyor muydun?" */}
                 {currentScene.historicalNote ? (
-                  <View style={{ marginTop: isTablet ? 9 : 8 }}>
-                    <View
+                  <View>
+                    <BouncyPressable
+                      onPress={() => {
+                        triggerLightHaptic();
+                        setShowHistoricalNote((prev) => !prev);
+                      }}
+                      scaleTo={0.97}
                       style={{
+                        alignSelf: "flex-start",
+                        borderRadius: 12,
+                        paddingHorizontal: 11,
+                        paddingVertical: 6,
                         flexDirection: "row",
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        backgroundColor: showHistoricalNote
+                          ? "#F59E0B"
+                          : "#F7F3E8",
+                        borderWidth: 1.5,
+                        borderColor: showHistoricalNote
+                          ? "#FDE68A"
+                          : "#E6DEC8",
+                        borderBottomWidth: 3,
+                        borderBottomColor: showHistoricalNote
+                          ? "#B45309"
+                          : "#D6CBB2",
                       }}
                     >
-                      <BouncyPressable
-                        onPress={() => {
-                          triggerLightHaptic();
-                          setShowHistoricalNote((prev) => !prev);
-                        }}
-                        scaleTo={0.97}
-                        className="rounded-xl flex-row items-center"
+                      <Text
                         style={{
-                          paddingHorizontal: 11,
-                          paddingVertical: 5,
-                          backgroundColor: showHistoricalNote
-                            ? "#F59E0B"
-                            : "#F7F3E8",
-                          borderWidth: 1.5,
-                          borderColor: showHistoricalNote
-                            ? "#FDE68A"
-                            : "#E6DEC8",
-                          borderBottomWidth: 3,
-                          borderBottomColor: showHistoricalNote
-                            ? "#B45309"
-                            : "#D6CBB2",
+                          color: "#1C1917",
+                          fontSize: 12,
+                          fontWeight: "900",
+                          marginRight: 5,
                         }}
                       >
-                        <Text
-                          style={{
-                            color: "#1C1917",
-                            fontSize: isTablet ? 12 : 11.5,
-                            fontWeight: "900",
-                            marginRight: 5,
-                          }}
-                        >
-                          💡 Bunu Biliyor muydun?
-                        </Text>
-                        {showHistoricalNote ? (
-                          <ChevronUp size={14} color="#1C1917" />
-                        ) : (
-                          <ChevronDown size={14} color="#78716C" />
-                        )}
-                      </BouncyPressable>
-                    </View>
+                        💡 Bunu Biliyor muydun?
+                      </Text>
+                      {showHistoricalNote ? (
+                        <ChevronUp size={14} color="#1C1917" />
+                      ) : (
+                        <ChevronDown size={14} color="#78716C" />
+                      )}
+                    </BouncyPressable>
 
                     {showHistoricalNote && (
                       <View
                         style={{
-                          marginTop: 6,
+                          marginTop: 7,
                           backgroundColor: "#FDF8EC",
-                          borderRadius: 14,
+                          borderRadius: 13,
                           borderWidth: 1.5,
                           borderColor: "#FDE68A",
                           paddingHorizontal: 12,
-                          paddingVertical: 8,
+                          paddingVertical: 9,
                         }}
                       >
                         <Text
                           style={{
                             color: "#44403C",
-                            fontSize: isTablet ? 13 : 12,
-                            lineHeight: isTablet ? 18.5 : 17,
+                            fontSize: isTablet ? 13.5 : 12.5,
+                            lineHeight: isTablet ? 19.5 : 18,
                             fontWeight: "600",
                           }}
                         >
@@ -1336,14 +1360,14 @@ export default function InteractiveChapterPlayerScreen() {
             )}
           </ScrollView>
 
-          {/* PINNED BOTTOM NAVIGATION BUTTONS (Always Visible Without Scrolling) */}
+          {/* Pinned Bottom Action Row */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 10,
+              gap: 8,
               flexShrink: 0,
-              paddingTop: isTablet ? 10 : 8,
+              paddingTop: isPhoneLandscape ? 6 : 8,
               borderTopWidth: 1.5,
               borderTopColor: "#E6DEC8",
             }}
@@ -1352,18 +1376,21 @@ export default function InteractiveChapterPlayerScreen() {
               <BouncyPressable
                 onPress={handlePrevScene}
                 scaleTo={0.96}
-                className="rounded-2xl flex-row items-center justify-center"
                 style={{
-                  paddingHorizontal: isTablet ? 16 : 12,
-                  minHeight: isTablet ? 44 : 40,
+                  borderRadius: 14,
+                  paddingHorizontal: isTablet ? 15 : 12,
+                  paddingVertical: isPhoneLandscape ? 8 : 10,
                   backgroundColor: "#F7F3E8",
                   borderWidth: 2,
                   borderColor: "#E6DEC8",
-                  borderBottomWidth: 4,
+                  borderBottomWidth: 3.5,
                   borderBottomColor: "#D6CBB2",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                <ArrowLeft size={16} color="#1C1917" />
+                <ArrowLeft size={15} color="#1C1917" />
                 <Text
                   style={{
                     color: "#1C1917",
@@ -1372,7 +1399,7 @@ export default function InteractiveChapterPlayerScreen() {
                     marginLeft: 5,
                   }}
                 >
-                  {sceneViewMode === "MID_DECISION" ? "Hikâyeye Dön" : "Önceki"}
+                  {sceneViewMode === "MID_DECISION" ? "Hikâye" : "Önceki"}
                 </Text>
               </BouncyPressable>
             )}
@@ -1380,11 +1407,14 @@ export default function InteractiveChapterPlayerScreen() {
             <BouncyPressable
               onPress={handleNextScene}
               scaleTo={0.98}
-              className="rounded-2xl flex-row items-center justify-between"
               style={{
                 flex: 1,
-                paddingHorizontal: isTablet ? 18 : 14,
-                minHeight: isTablet ? 44 : 40,
+                borderRadius: 14,
+                paddingHorizontal: isTablet ? 16 : 13,
+                paddingVertical: isPhoneLandscape ? 8 : 10,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
                 backgroundColor:
                   hasMidDecision && !midDecisionSolved
                     ? sceneViewMode === "STORY"
@@ -1402,7 +1432,7 @@ export default function InteractiveChapterPlayerScreen() {
                     : sceneIndex === totalScenes - 1
                     ? "#FDE68A"
                     : "#6EE7B7",
-                borderBottomWidth: 4,
+                borderBottomWidth: 3.5,
                 borderBottomColor:
                   hasMidDecision && !midDecisionSolved
                     ? sceneViewMode === "STORY"
@@ -1433,13 +1463,13 @@ export default function InteractiveChapterPlayerScreen() {
                 {hasMidDecision && !midDecisionSolved
                   ? sceneViewMode === "STORY"
                     ? "⚡ Ara Karar Sorusunu Cevapla"
-                    : "Devam Etmek İçin Doğru Şıkkı Seç"
+                    : "Devam İçin Doğru Şıkkı Seç"
                   : sceneIndex < totalScenes - 1
                   ? `Sonraki Sayfa (${sceneIndex + 2}/${totalScenes})`
                   : "Kader Anı: Sen Olsan Ne Yapardın?"}
               </Text>
               <ArrowRight
-                size={18}
+                size={17}
                 color={
                   hasMidDecision && !midDecisionSolved
                     ? sceneViewMode === "STORY"
@@ -1458,39 +1488,35 @@ export default function InteractiveChapterPlayerScreen() {
     );
   };
 
-  // ZERO-SCROLL DESTINY DECISION ENGINE (Fits 100% inside the card without scrolling)
+  // STAGE 2: DESTINY DECISION CARD (Now scrollable inside so options NEVER clip!)
   const renderDestinyDecisionEngine = () => (
     <View
       style={[
         {
+          flex: 1,
           width: "100%",
-          height: isTablet ? desktopCardHeight : undefined,
-          minHeight: isTablet ? desktopCardHeight : undefined,
-          maxHeight: desktopRightMaxHeight,
-          alignSelf: "flex-start",
           backgroundColor: "#FFFDF7",
-          borderRadius: isTablet ? 26 : 20,
+          borderRadius: isTablet ? 24 : 18,
           borderWidth: 2,
           borderColor: "#E6DEC8",
-          borderBottomWidth: isTablet ? 6 : 4,
+          borderBottomWidth: isTablet ? 5 : 4,
           borderBottomColor: "#D6CBB2",
-          paddingHorizontal: isTablet ? 24 : 14,
-          paddingTop: isTablet ? 16 : 12,
-          paddingBottom: isTablet ? 16 : 12,
-          justifyContent: "space-between",
+          paddingHorizontal: isTablet ? 20 : isPhoneLandscape ? 14 : 13,
+          paddingTop: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
+          paddingBottom: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
           overflow: "hidden",
         },
         STORYBOOK_PAGE_SHADOW,
       ]}
     >
-      {/* Pinned Top Header */}
+      {/* Top Header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           flexShrink: 0,
-          paddingBottom: isTablet ? 10 : 8,
+          paddingBottom: isPhoneLandscape ? 6 : 8,
           borderBottomWidth: 1.5,
           borderBottomColor: "#E6DEC8",
         }}
@@ -1503,7 +1529,7 @@ export default function InteractiveChapterPlayerScreen() {
             paddingRight: 8,
           }}
         >
-          <Sparkles size={16} color="#D97706" />
+          <Sparkles size={15} color="#D97706" />
           <Text
             style={{
               color: "#B45309",
@@ -1511,7 +1537,7 @@ export default function InteractiveChapterPlayerScreen() {
               fontWeight: "900",
               letterSpacing: 0.4,
               textTransform: "uppercase",
-              marginLeft: 6,
+              marginLeft: 5,
               flexShrink: 1,
             }}
             numberOfLines={1}
@@ -1520,57 +1546,29 @@ export default function InteractiveChapterPlayerScreen() {
           </Text>
         </View>
 
-        <BouncyPressable
-          onPress={() =>
-            handleToggleSpeech(
-              `${chapter.destinyMoment.title}. ${chapter.destinyMoment.question}`
-            )
-          }
-          scaleTo={0.96}
-          className="rounded-xl flex-row items-center"
-          style={{
-            paddingHorizontal: isTablet ? 12 : 10,
-            paddingVertical: isTablet ? 6 : 5,
-            backgroundColor: isSpeaking ? "#F43F5E" : "#F59E0B",
-            borderWidth: 1,
-            borderColor: isSpeaking ? "#FDA4AF" : "#FDE68A",
-            borderBottomWidth: 3,
-            borderBottomColor: isSpeaking ? "#BE123C" : "#B45309",
-          }}
-        >
-          {isSpeaking ? (
-            <VolumeX size={14} color="#FFFFFF" />
-          ) : (
-            <Volume2 size={14} color="#1C1917" />
-          )}
-          <Text
-            style={{
-              color: isSpeaking ? "#FFFFFF" : "#1C1917",
-              fontSize: isTablet ? 12 : 11,
-              fontWeight: "900",
-              marginLeft: 5,
-            }}
-          >
-            {isSpeaking ? "Durdur" : "Sesli Dinle"}
-          </Text>
-        </BouncyPressable>
+        {renderSpeechButton(
+          `${chapter.destinyMoment.title}. ${chapter.destinyMoment.question}`
+        )}
       </View>
 
-      {/* Center Options (Fits without scrolling) */}
-      <View
-        style={{
-          flex: isTablet ? 1 : undefined,
+      {/* Scrollable Center Choices */}
+      <ScrollView
+        ref={cardScrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingVertical: 10,
+          flexGrow: 1,
           justifyContent: "center",
-          paddingVertical: isTablet ? 8 : 6,
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Text
           style={{
             color: "#1C1917",
-            fontSize: isTablet ? 16.5 : 14.5,
-            lineHeight: isTablet ? 23 : 20,
+            fontSize: isTablet ? 16 : 14.5,
+            lineHeight: isTablet ? 23 : 20.5,
             fontWeight: "800",
-            marginBottom: isTablet ? 10 : 8,
+            marginBottom: 10,
           }}
         >
           {chapter.destinyMoment.question}
@@ -1579,10 +1577,10 @@ export default function InteractiveChapterPlayerScreen() {
         {activeFeedbackOption && !activeFeedbackOption.isHistoricalTruth && (
           <View
             style={{
-              borderRadius: 14,
+              borderRadius: 13,
               paddingHorizontal: 12,
               paddingVertical: 8,
-              marginBottom: 8,
+              marginBottom: 9,
               backgroundColor: "#FFFBEB",
               borderWidth: 1.5,
               borderColor: "#F59E0B",
@@ -1610,8 +1608,8 @@ export default function InteractiveChapterPlayerScreen() {
             <Text
               style={{
                 color: "#44403C",
-                fontSize: isTablet ? 13 : 12,
-                lineHeight: isTablet ? 18 : 16.5,
+                fontSize: isTablet ? 13 : 12.5,
+                lineHeight: isTablet ? 18.5 : 17.5,
                 fontWeight: "600",
               }}
             >
@@ -1620,7 +1618,7 @@ export default function InteractiveChapterPlayerScreen() {
           </View>
         )}
 
-        <View style={{ gap: isTablet ? 8 : 7 }}>
+        <View style={{ gap: 8 }}>
           {chapter.destinyMoment.options.map((option) => {
             const wasTriedWrong = triedWrongOptions.includes(option.id);
             const isPreselectedTruth =
@@ -1631,10 +1629,10 @@ export default function InteractiveChapterPlayerScreen() {
                 key={option.id}
                 onPress={() => handleSelectDestinyOption(option)}
                 scaleTo={0.98}
-                className="rounded-2xl flex-row items-center"
                 style={{
-                  paddingHorizontal: isTablet ? 12 : 10,
-                  paddingVertical: isTablet ? 10 : 8,
+                  borderRadius: 15,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
                   backgroundColor: isPreselectedTruth
                     ? "#ECFDF5"
                     : wasTriedWrong
@@ -1646,31 +1644,34 @@ export default function InteractiveChapterPlayerScreen() {
                     : wasTriedWrong
                     ? "#F59E0B"
                     : "#E6DEC8",
-                  borderBottomWidth: 4,
+                  borderBottomWidth: 3.5,
                   borderBottomColor: isPreselectedTruth
                     ? "#047857"
                     : wasTriedWrong
                     ? "#B45309"
                     : "#D6CBB2",
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
                 <View
                   style={{
-                    width: isTablet ? 32 : 28,
-                    height: isTablet ? 32 : 28,
-                    borderRadius: 10,
+                    width: 29,
+                    height: 29,
+                    borderRadius: 9,
                     alignItems: "center",
                     justifyContent: "center",
                     marginRight: 10,
                     backgroundColor: wasTriedWrong ? "#F59E0B" : "#10B981",
                     borderBottomWidth: 2.5,
                     borderBottomColor: wasTriedWrong ? "#B45309" : "#047857",
+                    flexShrink: 0,
                   }}
                 >
                   <Text
                     style={{
                       color: "#FFFFFF",
-                      fontSize: isTablet ? 14 : 13,
+                      fontSize: 13.5,
                       fontWeight: "900",
                     }}
                   >
@@ -1681,11 +1682,10 @@ export default function InteractiveChapterPlayerScreen() {
                 <Text
                   style={{
                     color: "#1C1917",
-                    fontSize: isTablet ? 14 : 13,
-                    lineHeight: isTablet ? 19.5 : 18,
+                    fontSize: isTablet ? 14.5 : 13.5,
+                    lineHeight: isTablet ? 20 : 18.5,
                     fontWeight: "700",
                     flex: 1,
-                    flexShrink: 1,
                   }}
                 >
                   {option.text}
@@ -1694,16 +1694,16 @@ export default function InteractiveChapterPlayerScreen() {
             );
           })}
         </View>
-      </View>
+      </ScrollView>
 
-      {/* Pinned Bottom Back / Next Buttons */}
+      {/* Bottom Back / Next Buttons */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
           flexShrink: 0,
-          paddingTop: isTablet ? 10 : 8,
+          paddingTop: isPhoneLandscape ? 6 : 8,
           borderTopWidth: 1.5,
           borderTopColor: "#E6DEC8",
         }}
@@ -1711,28 +1711,31 @@ export default function InteractiveChapterPlayerScreen() {
         <BouncyPressable
           onPress={handlePrevScene}
           scaleTo={0.97}
-          className="rounded-2xl flex-row items-center justify-center"
           style={{
             flex: isChapterCompleted ? undefined : 1,
+            borderRadius: 14,
             paddingHorizontal: 14,
-            minHeight: isTablet ? 44 : 40,
+            paddingVertical: isPhoneLandscape ? 8 : 10,
             backgroundColor: "#F7F3E8",
             borderWidth: 2,
             borderColor: "#E6DEC8",
-            borderBottomWidth: 4,
+            borderBottomWidth: 3.5,
             borderBottomColor: "#D6CBB2",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <ArrowLeft size={16} color="#1C1917" />
+          <ArrowLeft size={15} color="#1C1917" />
           <Text
             style={{
               color: "#1C1917",
               fontSize: isTablet ? 13.5 : 12.5,
               fontWeight: "900",
-              marginLeft: 6,
+              marginLeft: 5,
             }}
           >
-            {isChapterCompleted ? "Önceki" : "Hikâye Sayfalarına Geri Dön"}
+            {isChapterCompleted ? "Önceki" : "Hikâye Sayfalarına Dön"}
           </Text>
         </BouncyPressable>
 
@@ -1744,16 +1747,19 @@ export default function InteractiveChapterPlayerScreen() {
               setStage("TRUTH_REVEALED");
             }}
             scaleTo={0.98}
-            className="rounded-2xl flex-row items-center justify-between"
             style={{
               flex: 1,
-              paddingHorizontal: 16,
-              minHeight: isTablet ? 44 : 40,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: isPhoneLandscape ? 8 : 10,
               backgroundColor: "#10B981",
               borderWidth: 1.5,
               borderColor: "#6EE7B7",
-              borderBottomWidth: 4,
+              borderBottomWidth: 3.5,
               borderBottomColor: "#047857",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
             <Text
@@ -1761,115 +1767,86 @@ export default function InteractiveChapterPlayerScreen() {
                 color: "#FFFFFF",
                 fontSize: isTablet ? 13.5 : 12.5,
                 fontWeight: "900",
+                flexShrink: 1,
               }}
+              numberOfLines={1}
             >
-              Sonraki Sayfa (Tarihi Hakikat)
+              Tarihi Hakikati Gör
             </Text>
-            <ArrowRight size={17} color="#FFFFFF" />
+            <ArrowRight size={16} color="#FFFFFF" />
           </BouncyPressable>
         )}
       </View>
     </View>
   );
 
-  // ZERO-SCROLL HISTORICAL TRUTH CELEBRATION CARD (Never obscured by an auto-popping chest modal!)
+  // STAGE 3: HISTORICAL TRUTH CARD (Scrollable center + Pinned Bottom Actions)
   const renderHistoricalTruthCelebration = () => (
     <View
       style={[
         {
+          flex: 1,
           width: "100%",
-          height: isTablet ? desktopCardHeight : undefined,
-          minHeight: isTablet ? desktopCardHeight : undefined,
-          maxHeight: isTablet ? desktopCardHeight : undefined,
-          alignSelf: "flex-start",
           backgroundColor: "#FFFDF7",
-          borderRadius: isTablet ? 26 : 20,
+          borderRadius: isTablet ? 24 : 18,
           borderWidth: 2,
           borderColor: "#E6DEC8",
-          borderBottomWidth: isTablet ? 6 : 4,
+          borderBottomWidth: isTablet ? 5 : 4,
           borderBottomColor: "#D6CBB2",
-          paddingHorizontal: isTablet ? 24 : 14,
-          paddingTop: isTablet ? 16 : 12,
-          paddingBottom: isTablet ? 16 : 12,
-          justifyContent: "space-between",
+          paddingHorizontal: isTablet ? 20 : isPhoneLandscape ? 14 : 13,
+          paddingTop: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
+          paddingBottom: isTablet ? 13 : isPhoneLandscape ? 9 : 11,
+          overflow: "hidden",
         },
         STORYBOOK_PAGE_SHADOW,
       ]}
     >
-      {/* Pinned Top Header */}
+      {/* Top Header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           flexShrink: 0,
-          paddingBottom: isTablet ? 10 : 8,
+          paddingBottom: isPhoneLandscape ? 6 : 8,
           borderBottomWidth: 1.5,
           borderBottomColor: "#E6DEC8",
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <CheckCircle2 size={18} color="#10B981" />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+          <CheckCircle2 size={17} color="#10B981" />
           <Text
             style={{
               color: "#047857",
-              fontSize: isTablet ? 13 : 12,
+              fontSize: isTablet ? 13 : 11.5,
               fontWeight: "900",
               letterSpacing: 0.3,
+              flexShrink: 1,
             }}
+            numberOfLines={1}
           >
             TARİHİ HAKİKATİ BULDUN!
           </Text>
         </View>
 
-        <BouncyPressable
-          onPress={() =>
-            handleToggleSpeech(
-              chapter.destinyMoment.historicalTruthExplanation
-            )
-          }
-          scaleTo={0.96}
-          className="rounded-xl flex-row items-center"
-          style={{
-            paddingHorizontal: isTablet ? 12 : 10,
-            paddingVertical: isTablet ? 6 : 5,
-            backgroundColor: isSpeaking ? "#F43F5E" : "#F59E0B",
-            borderWidth: 1,
-            borderColor: isSpeaking ? "#FDA4AF" : "#FDE68A",
-            borderBottomWidth: 3,
-            borderBottomColor: isSpeaking ? "#BE123C" : "#B45309",
-          }}
-        >
-          {isSpeaking ? (
-            <VolumeX size={14} color="#FFFFFF" />
-          ) : (
-            <Volume2 size={14} color="#1C1917" />
-          )}
-          <Text
-            style={{
-              color: isSpeaking ? "#FFFFFF" : "#1C1917",
-              fontSize: isTablet ? 12 : 11,
-              fontWeight: "900",
-              marginLeft: 5,
-            }}
-          >
-            {isSpeaking ? "Durdur" : "Sesli Dinle"}
-          </Text>
-        </BouncyPressable>
+        {renderSpeechButton(chapter.destinyMoment.historicalTruthExplanation)}
       </View>
 
-      {/* Center Celebration Content */}
-      <View
-        style={{
-          flex: isTablet ? 1 : undefined,
+      {/* Scrollable Explanation + Quote */}
+      <ScrollView
+        ref={cardScrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingVertical: 10,
+          flexGrow: 1,
           justifyContent: "center",
-          paddingVertical: isTablet ? 6 : 6,
         }}
+        showsVerticalScrollIndicator={false}
       >
         <Text
           style={{
             color: "#D97706",
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: "900",
             letterSpacing: 0.6,
             marginBottom: 4,
@@ -1881,10 +1858,10 @@ export default function InteractiveChapterPlayerScreen() {
         <Text
           style={{
             color: "#1C1917",
-            fontSize: isTablet ? 15 : 13.5,
-            lineHeight: isTablet ? 22 : 19.5,
+            fontSize: isTablet ? 15.5 : 14,
+            lineHeight: isTablet ? 22.5 : 20.5,
             fontWeight: "500",
-            marginBottom: isTablet ? 10 : 8,
+            marginBottom: 10,
           }}
         >
           {chapter.destinyMoment.historicalTruthExplanation}
@@ -1894,13 +1871,13 @@ export default function InteractiveChapterPlayerScreen() {
           <View
             style={{
               backgroundColor: "#FDF8EC",
-              borderRadius: 15,
+              borderRadius: 14,
               borderWidth: 1.5,
               borderColor: "#FDE68A",
               borderLeftWidth: 4,
               borderLeftColor: "#F59E0B",
-              paddingHorizontal: 13,
-              paddingVertical: 9,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
             }}
           >
             <View
@@ -1926,7 +1903,7 @@ export default function InteractiveChapterPlayerScreen() {
               style={{
                 color: "#1C1917",
                 fontSize: isTablet ? 14 : 12.5,
-                lineHeight: isTablet ? 19.5 : 17.5,
+                lineHeight: isTablet ? 19.5 : 18,
                 fontWeight: "600",
                 fontStyle: "italic",
               }}
@@ -1935,21 +1912,19 @@ export default function InteractiveChapterPlayerScreen() {
             </Text>
           </View>
         )}
-      </View>
+      </ScrollView>
 
-      {/* Pinned Bottom Action Area */}
+      {/* Bottom Action Area */}
       <View
         style={{
           flexShrink: 0,
-          paddingTop: isTablet ? 10 : 8,
+          paddingTop: isPhoneLandscape ? 6 : 8,
           borderTopWidth: 1.5,
           borderTopColor: "#E6DEC8",
-          gap: 8,
+          gap: 7,
         }}
       >
         {!isChapterCompleted ? (
-          /* FIRST-TIME COMPLETION: Show glowing "🎁 Miras Sandığını Aç (+50 Puan)" button!
-             Chest modal ONLY opens when user clicks this button! */
           <BouncyPressable
             onPress={() => {
               stopTurkishSpeech();
@@ -1959,58 +1934,64 @@ export default function InteractiveChapterPlayerScreen() {
               setChestModalVisible(true);
             }}
             scaleTo={0.98}
-            className="rounded-2xl py-3 px-4 flex-row items-center justify-center"
             style={{
+              borderRadius: 14,
+              paddingVertical: isPhoneLandscape ? 8 : 11,
+              paddingHorizontal: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
               backgroundColor: "#F59E0B",
               borderWidth: 1.5,
               borderColor: "#FDE68A",
-              borderBottomWidth: 4,
+              borderBottomWidth: 3.5,
               borderBottomColor: "#B45309",
             }}
           >
-            <Gift size={18} color="#1C1917" />
+            <Gift size={17} color="#1C1917" />
             <Text
               style={{
                 color: "#1C1917",
-                fontSize: isTablet ? 15 : 14,
+                fontSize: isTablet ? 14.5 : 13.5,
                 fontWeight: "900",
-                marginLeft: 8,
+                marginLeft: 7,
               }}
+              numberOfLines={1}
             >
-              🎁 Miras Sandığını Aç (+{chapter.rewardArtifact.points} Puan)
+              Miras Sandığını Aç (+{chapter.rewardArtifact.points} Puan)
             </Text>
           </BouncyPressable>
         ) : (
-          /* ALREADY COMPLETED: Never show chest modal or chest button again! */
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              paddingVertical: 6,
-              paddingHorizontal: 12,
-              borderRadius: 12,
+              paddingVertical: 5,
+              paddingHorizontal: 10,
+              borderRadius: 11,
               backgroundColor: "#ECFDF5",
               borderWidth: 1.5,
               borderColor: "#6EE7B7",
             }}
           >
-            <CheckCircle2 size={15} color="#047857" />
+            <CheckCircle2 size={14} color="#047857" />
             <Text
               style={{
                 color: "#047857",
-                fontSize: isTablet ? 13 : 12,
+                fontSize: isTablet ? 12.5 : 11.5,
                 fontWeight: "900",
-                marginLeft: 6,
+                marginLeft: 5,
+                flexShrink: 1,
               }}
+              numberOfLines={1}
             >
-              ✓ Bu Bölümün Eseri Müzede Açıldı ({chapter.rewardArtifact.name})
+              Eser Müzede Açıldı: {chapter.rewardArtifact.name}
             </Text>
           </View>
         )}
 
-        {/* Seamless "Sıradaki Bölüm" + "Keşif Haritasına Dön" Row */}
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 7 }}>
           {nextAvailableChapter && (
             <BouncyPressable
               onPress={() => {
@@ -2021,42 +2002,37 @@ export default function InteractiveChapterPlayerScreen() {
                 router.replace(`/chapter/${nextAvailableChapter.id}`);
               }}
               scaleTo={0.98}
-              className="rounded-2xl px-3.5 py-2.5 flex-row items-center justify-between"
               style={{
                 flex: 1.4,
+                borderRadius: 13,
+                paddingHorizontal: 12,
+                paddingVertical: isPhoneLandscape ? 7 : 9,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
                 backgroundColor: "#10B981",
                 borderWidth: 1,
                 borderColor: "#6EE7B7",
-                borderBottomWidth: 4,
+                borderBottomWidth: 3.5,
                 borderBottomColor: "#047857",
               }}
             >
-              <View
+              <Text
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
+                  color: "#FFFFFF",
+                  fontSize: isTablet ? 13 : 12,
+                  fontWeight: "900",
                   flex: 1,
-                  paddingRight: 6,
+                  paddingRight: 4,
                 }}
+                numberOfLines={1}
               >
-                <Sparkles size={15} color="#FFFFFF" />
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: isTablet ? 13 : 12,
-                    fontWeight: "900",
-                    marginLeft: 6,
-                    flexShrink: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  Sıradaki Bölüm:{" "}
-                  {nextHeroChapter
-                    ? nextAvailableChapter.title
-                    : `${nextAvailableHeroName} - ${nextAvailableChapter.title}`}
-                </Text>
-              </View>
-              <ArrowRight size={16} color="#FFFFFF" />
+                Sıradaki:{" "}
+                {nextHeroChapter
+                  ? nextAvailableChapter.title
+                  : `${nextAvailableHeroName}`}
+              </Text>
+              <ArrowRight size={15} color="#FFFFFF" />
             </BouncyPressable>
           )}
 
@@ -2069,13 +2045,17 @@ export default function InteractiveChapterPlayerScreen() {
               router.back();
             }}
             scaleTo={0.97}
-            className="rounded-2xl py-2.5 px-3 flex-row items-center justify-center"
             style={{
               flex: 1,
+              borderRadius: 13,
+              paddingVertical: isPhoneLandscape ? 7 : 9,
+              paddingHorizontal: 10,
+              alignItems: "center",
+              justifyContent: "center",
               backgroundColor: "#F7F3E8",
               borderWidth: 2,
               borderColor: "#E6DEC8",
-              borderBottomWidth: 4,
+              borderBottomWidth: 3.5,
               borderBottomColor: "#D6CBB2",
             }}
           >
@@ -2087,7 +2067,7 @@ export default function InteractiveChapterPlayerScreen() {
               }}
               numberOfLines={1}
             >
-              Keşif Haritasına Dön
+              Ana Menü
             </Text>
           </BouncyPressable>
 
@@ -2100,12 +2080,16 @@ export default function InteractiveChapterPlayerScreen() {
               setActiveFeedbackOption(null);
             }}
             scaleTo={0.97}
-            className="rounded-2xl py-2.5 px-3 flex-row items-center justify-center"
             style={{
+              borderRadius: 13,
+              paddingVertical: isPhoneLandscape ? 7 : 9,
+              paddingHorizontal: 11,
+              alignItems: "center",
+              justifyContent: "center",
               backgroundColor: "#F7F3E8",
               borderWidth: 2,
               borderColor: "#E6DEC8",
-              borderBottomWidth: 4,
+              borderBottomWidth: 3.5,
               borderBottomColor: "#D6CBB2",
             }}
           >
@@ -2118,7 +2102,10 @@ export default function InteractiveChapterPlayerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F7F3E8" }}>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView
+        style={{ flex: 1 }}
+        edges={["top", "bottom", "left", "right"]}
+      >
         <Animated.View
           pointerEvents="none"
           style={[
@@ -2128,7 +2115,7 @@ export default function InteractiveChapterPlayerScreen() {
           ]}
         />
 
-        {/* Hidden Preloader for all chapter scene images so scene transitions never flicker or lag */}
+        {/* Hidden Preloader */}
         <View
           pointerEvents="none"
           style={{
@@ -2148,65 +2135,54 @@ export default function InteractiveChapterPlayerScreen() {
 
         {renderTopBar()}
 
-        <ScrollView
-          contentContainerStyle={{
-            paddingBottom: isTablet ? 20 : 12,
+        {/* FULL VIEWPORT FLEX CONTAINER (Zero outer scroll fighting, adapts cleanly to all 4 orientations!) */}
+        <View
+          style={{
+            flex: 1,
+            maxWidth: isSideBySideSpread ? 1140 : isTablet ? 840 : 600,
+            width: "100%",
+            alignSelf: "center",
+            paddingHorizontal: containerPadX,
+            paddingBottom: isPhoneLandscape ? 6 : isTablet ? 16 : 8,
+            justifyContent: isTabletLandscape ? "center" : "flex-start",
           }}
-          showsVerticalScrollIndicator={false}
         >
-          {/* Centered 1140px Open Illustrated Storybook Spread */}
           <View
             style={{
-              maxWidth: 1140,
-              alignSelf: "center",
-              width: "100%",
-              paddingHorizontal: isTablet ? 24 : 12,
+              flex: 1,
+              maxHeight: isTabletLandscape ? 580 : undefined,
+              flexDirection: isSideBySideSpread ? "row" : "column",
+              gap: isSideBySideSpread ? (isTablet ? 20 : 12) : isTablet ? 14 : 9,
             }}
           >
+            {/* ARTWORK SIDE */}
             <View
-              style={{
-                flexDirection: isTablet ? "row" : "column",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: isTablet ? 20 : 10,
-              }}
+              style={
+                isSideBySideSpread
+                  ? {
+                      width: isTablet ? "47%" : "43%",
+                      height: "100%",
+                      flexShrink: 0,
+                    }
+                  : {
+                      width: "100%",
+                      flexShrink: 0,
+                    }
+              }
             >
-              <View
-                style={{
-                  width: isTablet ? "47%" : "100%",
-                  height: isTablet
-                    ? desktopCardHeight
-                    : mobileArtworkCardHeight,
-                  minHeight: isTablet
-                    ? desktopCardHeight
-                    : mobileArtworkCardHeight,
-                  maxHeight: isTablet
-                    ? desktopCardHeight
-                    : mobileArtworkCardHeight,
-                  alignSelf: "flex-start",
-                  flexShrink: 0,
-                }}
-              >
-                {renderArtworkPanel()}
-              </View>
+              {renderArtworkPanel()}
+            </View>
 
-              <View
-                style={{
-                  width: isTablet ? "51%" : "100%",
-                  alignSelf: "flex-start",
-                  flexShrink: 0,
-                }}
-              >
-                {stage === "SCENES" && renderSceneReadingContent()}
-                {stage === "DESTINY" && renderDestinyDecisionEngine()}
-                {stage === "TRUTH_REVEALED" &&
-                  renderHistoricalTruthCelebration()}
-              </View>
+            {/* STORY / DECISION / TRUTH CARD SIDE */}
+            <View style={{ flex: 1, minHeight: 0 }}>
+              {stage === "SCENES" && renderSceneReadingContent()}
+              {stage === "DESTINY" && renderDestinyDecisionEngine()}
+              {stage === "TRUTH_REVEALED" && renderHistoricalTruthCelebration()}
             </View>
           </View>
-        </ScrollView>
+        </View>
 
-        {/* Reward Artifact Chest Modal (Only opens when user explicitly clicks "🎁 Miras Sandığını Aç") */}
+        {/* Reward Artifact Chest Modal */}
         <Modal
           visible={chestModalVisible}
           transparent
@@ -2216,184 +2192,214 @@ export default function InteractiveChapterPlayerScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "rgba(28, 25, 23, 0.55)",
+              backgroundColor: "rgba(28, 25, 23, 0.58)",
               alignItems: "center",
               justifyContent: "center",
-              padding: 20,
+              paddingTop: Math.max(16, insets.top + 8),
+              paddingBottom: Math.max(16, insets.bottom + 8),
+              paddingLeft: Math.max(16, insets.left + 8),
+              paddingRight: Math.max(16, insets.right + 8),
             }}
           >
             <Animated.View
               style={[
                 {
                   width: "100%",
-                  maxWidth: 600,
+                  maxWidth: 540,
+                  maxHeight: "92%",
                   backgroundColor: "#FFFDF7",
-                  borderRadius: 26,
+                  borderRadius: 24,
                   borderWidth: 2.5,
                   borderColor: "#F59E0B",
-                  borderBottomWidth: 6,
+                  borderBottomWidth: 5,
                   borderBottomColor: "#B45309",
-                  padding: isTablet ? 28 : 20,
-                  alignItems: "center",
+                  overflow: "hidden",
                 },
                 STORYBOOK_PAGE_SHADOW,
                 chestAnimatedStyle,
               ]}
             >
-              <Text
-                style={{
-                  color: "#10B981",
-                  fontSize: 12,
-                  fontWeight: "900",
-                  letterSpacing: 0.8,
-                  marginBottom: 8,
+              <ScrollView
+                contentContainerStyle={{
+                  padding: isTablet ? 26 : 18,
+                  alignItems: "center",
                 }}
+                showsVerticalScrollIndicator={false}
               >
-                ★ YENİ TARİHİ ESER KAZANILDI (+{chapter.rewardArtifact.points}{" "}
-                PUAN) ★
-              </Text>
+                <Text
+                  style={{
+                    color: "#10B981",
+                    fontSize: 12,
+                    fontWeight: "900",
+                    letterSpacing: 0.7,
+                    marginBottom: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  ★ YENİ TARİHİ ESER KAZANILDI (+{chapter.rewardArtifact.points}{" "}
+                  PUAN) ★
+                </Text>
 
-              <View
-                style={{
-                  width: 136,
-                  height: 136,
-                  borderRadius: 24,
-                  overflow: "hidden",
-                  borderWidth: 3,
-                  borderColor: "#F59E0B",
-                  backgroundColor: "#1E1B4B",
-                  marginBottom: 12,
-                }}
-              >
-                {artifactImageSource && (
-                  <Image
-                    source={artifactImageSource}
-                    resizeMode="cover"
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                )}
-              </View>
+                <View
+                  style={{
+                    width: isPhoneLandscape ? 96 : 128,
+                    height: isPhoneLandscape ? 96 : 128,
+                    borderRadius: 22,
+                    overflow: "hidden",
+                    borderWidth: 3,
+                    borderColor: "#F59E0B",
+                    backgroundColor: "#1E1B4B",
+                    marginBottom: 10,
+                  }}
+                >
+                  {artifactImageSource && (
+                    <Image
+                      source={artifactImageSource}
+                      resizeMode="cover"
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  )}
+                </View>
 
-              <Text
-                style={{
-                  color: "#1C1917",
-                  fontSize: isTablet ? 21 : 19,
-                  fontWeight: "900",
-                  textAlign: "center",
-                  marginBottom: 4,
-                }}
-              >
-                {chapter.rewardArtifact.name}
-              </Text>
+                <Text
+                  style={{
+                    color: "#1C1917",
+                    fontSize: isTablet ? 20 : 18,
+                    fontWeight: "900",
+                    textAlign: "center",
+                    marginBottom: 4,
+                  }}
+                >
+                  {chapter.rewardArtifact.name}
+                </Text>
 
-              <Text
-                style={{
-                  color: "#D97706",
-                  fontSize: 13.5,
-                  fontWeight: "900",
-                  marginBottom: 8,
-                }}
-              >
-                Yeni Unvan: “{chapter.rewardArtifact.unlockedTitle}”
-              </Text>
+                <Text
+                  style={{
+                    color: "#D97706",
+                    fontSize: 13,
+                    fontWeight: "900",
+                    marginBottom: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  Yeni Unvan: “{chapter.rewardArtifact.unlockedTitle}”
+                </Text>
 
-              <Text
-                style={{
-                  color: "#44403C",
-                  fontSize: 14,
-                  lineHeight: 21,
-                  textAlign: "center",
-                  marginBottom: 18,
-                }}
-              >
-                {chapter.rewardArtifact.shortDescription}
-              </Text>
+                <Text
+                  style={{
+                    color: "#44403C",
+                    fontSize: 13.5,
+                    lineHeight: 20,
+                    textAlign: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  {chapter.rewardArtifact.shortDescription}
+                </Text>
 
-              <View className="w-full gap-2.5">
-                {nextAvailableChapter && (
+                <View style={{ width: "100%", gap: 9 }}>
+                  {nextAvailableChapter && (
+                    <BouncyPressable
+                      onPress={() => {
+                        stopTurkishSpeech();
+                        setChestModalVisible(false);
+                        router.replace(`/chapter/${nextAvailableChapter.id}`);
+                      }}
+                      scaleTo={0.98}
+                      style={{
+                        borderRadius: 14,
+                        paddingVertical: 11,
+                        paddingHorizontal: 16,
+                        width: "100%",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#10B981",
+                        borderWidth: 1,
+                        borderColor: "#6EE7B7",
+                        borderBottomWidth: 3.5,
+                        borderBottomColor: "#047857",
+                      }}
+                    >
+                      <Sparkles size={16} color="#FFFFFF" />
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 14,
+                          fontWeight: "900",
+                          marginLeft: 7,
+                        }}
+                        numberOfLines={1}
+                      >
+                        Sıradaki: {nextAvailableChapter.title} ➔
+                      </Text>
+                    </BouncyPressable>
+                  )}
+
                   <BouncyPressable
                     onPress={() => {
                       stopTurkishSpeech();
                       setChestModalVisible(false);
-                      router.replace(`/chapter/${nextAvailableChapter.id}`);
+                      router.push("/(tabs)/museum");
                     }}
                     scaleTo={0.98}
-                    className="rounded-2xl py-3 px-5 w-full flex-row items-center justify-center"
                     style={{
-                      backgroundColor: "#10B981",
+                      borderRadius: 14,
+                      paddingVertical: 11,
+                      paddingHorizontal: 16,
+                      width: "100%",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#F59E0B",
                       borderWidth: 1,
-                      borderColor: "#6EE7B7",
-                      borderBottomWidth: 4,
-                      borderBottomColor: "#047857",
+                      borderColor: "#FDE68A",
+                      borderBottomWidth: 3.5,
+                      borderBottomColor: "#B45309",
                     }}
                   >
-                    <Sparkles size={17} color="#FFFFFF" />
+                    <Landmark size={16} color="#1C1917" />
                     <Text
                       style={{
-                        color: "#FFFFFF",
-                        fontSize: 14.5,
+                        color: "#1C1917",
+                        fontSize: 14,
                         fontWeight: "900",
-                        marginLeft: 8,
+                        marginLeft: 7,
                       }}
-                      numberOfLines={1}
                     >
-                      Sıradaki Bölüm: {nextAvailableChapter.title} ➔
+                      Miras Müzesi’nde İncele
                     </Text>
                   </BouncyPressable>
-                )}
 
-                <BouncyPressable
-                  onPress={() => {
-                    stopTurkishSpeech();
-                    setChestModalVisible(false);
-                    router.push("/(tabs)/museum");
-                  }}
-                  scaleTo={0.98}
-                  className="rounded-2xl py-3 px-5 w-full flex-row items-center justify-center"
-                  style={{
-                    backgroundColor: "#F59E0B",
-                    borderWidth: 1,
-                    borderColor: "#FDE68A",
-                    borderBottomWidth: 4,
-                    borderBottomColor: "#B45309",
-                  }}
-                >
-                  <Landmark size={17} color="#1C1917" />
-                  <Text
+                  <BouncyPressable
+                    onPress={() => setChestModalVisible(false)}
+                    scaleTo={0.98}
                     style={{
-                      color: "#1C1917",
-                      fontSize: 14.5,
-                      fontWeight: "900",
-                      marginLeft: 8,
+                      borderRadius: 14,
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      width: "100%",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#F7F3E8",
+                      borderWidth: 2,
+                      borderColor: "#E6DEC8",
+                      borderBottomWidth: 3.5,
+                      borderBottomColor: "#D6CBB2",
                     }}
                   >
-                    Miras Müzesi’nde İncele
-                  </Text>
-                </BouncyPressable>
-
-                <BouncyPressable
-                  onPress={() => setChestModalVisible(false)}
-                  scaleTo={0.98}
-                  className="rounded-2xl py-2.5 px-5 w-full items-center justify-center"
-                  style={{
-                    backgroundColor: "#F7F3E8",
-                    borderWidth: 2,
-                    borderColor: "#E6DEC8",
-                    borderBottomWidth: 4,
-                    borderBottomColor: "#D6CBB2",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#1C1917",
-                      fontSize: 13.5,
-                      fontWeight: "800",
-                    }}
-                  >
-                    Sayfada Kal
-                  </Text>
-                </BouncyPressable>
-              </View>
+                    <Text
+                      style={{
+                        color: "#1C1917",
+                        fontSize: 13.5,
+                        fontWeight: "800",
+                      }}
+                    >
+                      Sayfada Kal
+                    </Text>
+                  </BouncyPressable>
+                </View>
+              </ScrollView>
             </Animated.View>
           </View>
         </Modal>

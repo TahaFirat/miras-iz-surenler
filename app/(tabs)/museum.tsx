@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  Modal,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
+import { View, Text, ScrollView, Image, Modal, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -28,7 +20,6 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import {
-  Landmark,
   Sparkles,
   Award,
   Compass,
@@ -48,12 +39,20 @@ import {
 } from "../../src/data/storiesData";
 import { useUserStore } from "../../src/store/useUserStore";
 import { resolveImageAsset } from "../../src/utils/imageAssets";
+import { useResponsiveLayout } from "../../src/utils/useResponsiveLayout";
 import { BouncyPressable } from "../../src/components/BouncyPressable";
 
 export default function MirasMuseumScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const {
+    width,
+    isLandscape,
+    isTablet,
+    isPhoneLandscape,
+    isTabletLandscape,
+    insets,
+    horizontalPadding,
+  } = useResponsiveLayout();
 
   const unlockedArtifacts = useUserStore((s) => s.unlockedArtifacts);
   const discoveredHotspots = useUserStore((s) => s.discoveredHotspots);
@@ -104,7 +103,7 @@ export default function MirasMuseumScreen() {
 
     pinPulse.value = withRepeat(
       withSequence(
-        withTiming(1.12, {
+        withTiming(1.1, {
           duration: 950,
           easing: Easing.inOut(Easing.quad),
         }),
@@ -150,8 +149,17 @@ export default function MirasMuseumScreen() {
     discoverHotspot(hotspot.id);
   };
 
+  const cardWidth =
+    isTabletLandscape && width >= 1024
+      ? "32.2%"
+      : isTablet || isPhoneLandscape
+      ? "48.8%"
+      : "100%";
+
+  const pedestalImageSize = isPhoneLandscape ? 124 : isTablet ? 156 : 148;
+
   const renderGoldenMarblePedestalSvg = () => (
-    <Svg width="100%" height="56" viewBox="0 0 260 56">
+    <Svg width="100%" height="50" viewBox="0 0 260 56">
       <Defs>
         <RadialGradient id="pedGlowGold" cx="50%" cy="45%" r="50%">
           <Stop offset="0%" stopColor="#F59E0B" stopOpacity="0.28" />
@@ -200,32 +208,340 @@ export default function MirasMuseumScreen() {
     </Svg>
   );
 
+  // Shared Inspector Detail Content (reused for both Portrait & Landscape modal splits)
+  const renderInspectorDetails = (artifact: RewardArtifact) => (
+    <>
+      {/* Clickable Hotspot Selector Pills Row */}
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        {artifact.hotspots.map((hotspot, idx) => {
+          const isSelected = activeHotspot?.id === hotspot.id;
+          return (
+            <BouncyPressable
+              key={hotspot.id}
+              onPress={() => handleSelectHotspot(hotspot)}
+              scaleTo={0.96}
+              style={{
+                borderRadius: 13,
+                paddingHorizontal: 11,
+                paddingVertical: 7,
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: isSelected ? "#F59E0B" : "#F7F3E8",
+                borderWidth: 1.5,
+                borderColor: isSelected ? "#FDE68A" : "#E6DEC8",
+                borderBottomWidth: 3,
+                borderBottomColor: isSelected ? "#B45309" : "#D6CBB2",
+              }}
+            >
+              <Sparkles
+                size={12}
+                color={isSelected ? "#1C1917" : "#D97706"}
+              />
+              <Text
+                style={{
+                  color: "#1C1917",
+                  fontSize: 12.5,
+                  fontWeight: "900",
+                  marginLeft: 5,
+                }}
+              >
+                {idx + 1}. {hotspot.title}
+              </Text>
+            </BouncyPressable>
+          );
+        })}
+      </View>
+
+      {/* Active Hotspot Detail Card */}
+      {activeHotspot && (
+        <View
+          style={{
+            borderRadius: 18,
+            padding: 14,
+            marginBottom: 12,
+            backgroundColor: "#FDF8EC",
+            borderWidth: 2,
+            borderColor: "#FDE68A",
+            borderLeftWidth: 5,
+            borderLeftColor: "#F59E0B",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: 4,
+            }}
+          >
+            <Sparkles size={14} color="#D97706" />
+            <Text
+              style={{
+                color: "#B45309",
+                fontSize: 11,
+                fontWeight: "900",
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+              }}
+            >
+              KEŞFEDİLEN SIR NOKTASI
+            </Text>
+          </View>
+
+          <Text
+            style={{
+              color: "#1C1917",
+              fontSize: 16.5,
+              fontWeight: "900",
+              marginBottom: 4,
+            }}
+          >
+            {activeHotspot.title}
+          </Text>
+
+          <Text
+            style={{
+              color: "#44403C",
+              fontSize: 14,
+              lineHeight: 21,
+              fontWeight: "600",
+            }}
+          >
+            {activeHotspot.secretFact}
+          </Text>
+        </View>
+      )}
+
+      {/* Full Historical Context Box */}
+      <View
+        style={{
+          borderRadius: 16,
+          padding: 13,
+          marginBottom: 14,
+          backgroundColor: "#F7F3E8",
+          borderWidth: 1.5,
+          borderColor: "#E6DEC8",
+        }}
+      >
+        <Text
+          style={{
+            color: "#0D9488",
+            fontSize: 11.5,
+            fontWeight: "900",
+            letterSpacing: 0.5,
+            marginBottom: 4,
+          }}
+        >
+          TARİHİ MİRAS ÖZETİ
+        </Text>
+        <Text
+          style={{
+            color: "#44403C",
+            fontSize: 13.5,
+            lineHeight: 20,
+            fontWeight: "600",
+          }}
+        >
+          {artifact.historicalNote || artifact.shortDescription}
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <BouncyPressable
+          onPress={() => {
+            const targetChapterId = artifact.chapterId;
+            setSelectedArtifact(null);
+            router.push(`/chapter/${targetChapterId}`);
+          }}
+          scaleTo={0.97}
+          style={{
+            flex: 1,
+            borderRadius: 14,
+            paddingVertical: 11,
+            paddingHorizontal: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#F59E0B",
+            borderWidth: 1,
+            borderColor: "#FDE68A",
+            borderBottomWidth: 3.5,
+            borderBottomColor: "#B45309",
+          }}
+        >
+          <Compass size={16} color="#1C1917" />
+          <Text
+            style={{
+              color: "#1C1917",
+              fontSize: 13,
+              fontWeight: "900",
+              marginLeft: 5,
+            }}
+            numberOfLines={1}
+          >
+            Bölüme Git
+          </Text>
+        </BouncyPressable>
+
+        <BouncyPressable
+          onPress={() => setSelectedArtifact(null)}
+          scaleTo={0.97}
+          style={{
+            flex: 1,
+            borderRadius: 14,
+            paddingVertical: 11,
+            paddingHorizontal: 14,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#10B981",
+            borderWidth: 1,
+            borderColor: "#6EE7B7",
+            borderBottomWidth: 3.5,
+            borderBottomColor: "#047857",
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 13.5,
+              fontWeight: "900",
+            }}
+          >
+            Müzeye Dön
+          </Text>
+        </BouncyPressable>
+      </View>
+    </>
+  );
+
+  // Interactive Artifact Image + Clamped Circular Hotspot Pins
+  const renderInspectorStage = (artifact: RewardArtifact, stageHeight: number) => (
+    <View
+      style={{
+        width: "100%",
+        height: stageHeight,
+        borderRadius: 18,
+        overflow: "hidden",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#1E1B4B",
+        borderWidth: 2.5,
+        borderColor: "#F59E0B",
+        position: "relative",
+      }}
+    >
+      {resolveImageAsset(artifact.imagePath) && (
+        <Image
+          source={resolveImageAsset(artifact.imagePath)!}
+          resizeMode="contain"
+          style={{ width: "86%", height: "86%" }}
+        />
+      )}
+
+      {artifact.hotspots.map((hotspot, idx) => {
+        const isSelected = activeHotspot?.id === hotspot.id;
+        const isDiscovered = discoveredHotspots.includes(hotspot.id);
+        const clampedX = Math.max(12, Math.min(88, hotspot.xPercent));
+        const clampedY = Math.max(14, Math.min(86, hotspot.yPercent));
+
+        return (
+          <View
+            key={hotspot.id}
+            style={{
+              position: "absolute",
+              left: `${clampedX}%`,
+              top: `${clampedY}%`,
+              marginLeft: -18,
+              marginTop: -18,
+              zIndex: isSelected ? 20 : 10,
+            }}
+          >
+            <Animated.View style={pulsingPinStyle}>
+              <BouncyPressable
+                onPress={() => handleSelectHotspot(hotspot)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isSelected
+                    ? "#F59E0B"
+                    : isDiscovered
+                    ? "#10B981"
+                    : "#FFFDF7",
+                  borderWidth: 2.5,
+                  borderColor: "#FFFFFF",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 4,
+                  elevation: 5,
+                }}
+              >
+                <Text
+                  style={{
+                    color: isSelected
+                      ? "#1C1917"
+                      : isDiscovered
+                      ? "#FFFFFF"
+                      : "#1C1917",
+                    fontSize: 13.5,
+                    fontWeight: "900",
+                  }}
+                >
+                  {idx + 1}
+                </Text>
+              </BouncyPressable>
+            </Animated.View>
+          </View>
+        );
+      })}
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F7F3E8" }}>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 16,
-            paddingBottom: 120,
+            paddingTop: isPhoneLandscape ? 10 : 14,
+            paddingBottom: isPhoneLandscape ? 20 : 32,
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Centered 1120px Container */}
           <View
             style={{
-              maxWidth: 1120,
+              maxWidth: 1140,
               alignSelf: "center",
               width: "100%",
-              paddingHorizontal: isTablet ? 24 : 14,
+              paddingHorizontal: horizontalPadding,
             }}
           >
             {/* Museum Top Header */}
-            <View className="flex-row items-center justify-between flex-wrap gap-3 mb-4">
-              <View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              <View style={{ flex: 1, minWidth: 170 }}>
                 <Text
                   style={{
                     color: "#D97706",
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: "900",
                     letterSpacing: 1,
                     textTransform: "uppercase",
@@ -236,7 +552,11 @@ export default function MirasMuseumScreen() {
                 <Text
                   style={{
                     color: "#1C1917",
-                    fontSize: isTablet ? 26 : 21,
+                    fontSize: isPhoneLandscape
+                      ? 20
+                      : isTablet
+                      ? 26
+                      : 22,
                     fontWeight: "900",
                   }}
                 >
@@ -244,21 +564,24 @@ export default function MirasMuseumScreen() {
                 </Text>
               </View>
 
-              {/* Compact Stats Badges */}
-              <View className="flex-row items-center gap-2">
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <View
-                  className="px-3.5 py-2 rounded-xl flex-row items-center"
                   style={{
+                    paddingHorizontal: 11,
+                    paddingVertical: 7,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
                     backgroundColor: "#10B981",
-                    borderBottomWidth: 3.5,
+                    borderBottomWidth: 3,
                     borderBottomColor: "#047857",
                   }}
                 >
-                  <Award size={15} color="#FFFFFF" />
+                  <Award size={14} color="#FFFFFF" />
                   <Text
                     style={{
                       color: "#FFFFFF",
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: "900",
                       marginLeft: 5,
                     }}
@@ -268,18 +591,22 @@ export default function MirasMuseumScreen() {
                 </View>
 
                 <View
-                  className="px-3.5 py-2 rounded-xl flex-row items-center"
                   style={{
+                    paddingHorizontal: 11,
+                    paddingVertical: 7,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
                     backgroundColor: "#F59E0B",
-                    borderBottomWidth: 3.5,
+                    borderBottomWidth: 3,
                     borderBottomColor: "#B45309",
                   }}
                 >
-                  <Sparkles size={15} color="#1C1917" />
+                  <Sparkles size={14} color="#1C1917" />
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: "900",
                       marginLeft: 5,
                     }}
@@ -290,11 +617,11 @@ export default function MirasMuseumScreen() {
               </View>
             </View>
 
-            {/* 3D Tactile Filter Buttons by 6 Story Modes */}
+            {/* Tactile Category Filter Chips */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingBottom: 18 }}
+              contentContainerStyle={{ gap: 8, paddingBottom: 14 }}
             >
               <BouncyPressable
                 onPress={() => {
@@ -302,28 +629,32 @@ export default function MirasMuseumScreen() {
                   setSelectedCategory("ALL");
                 }}
                 scaleTo={0.96}
-                className="rounded-2xl px-4 py-2.5 flex-row items-center"
                 style={{
+                  borderRadius: 13,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  flexDirection: "row",
+                  alignItems: "center",
                   backgroundColor:
                     selectedCategory === "ALL" ? "#10B981" : "#FFFDF7",
                   borderWidth: 1.5,
                   borderColor:
                     selectedCategory === "ALL" ? "#6EE7B7" : "#E6DEC8",
-                  borderBottomWidth: 4,
+                  borderBottomWidth: 3,
                   borderBottomColor:
                     selectedCategory === "ALL" ? "#047857" : "#D6CBB2",
                 }}
               >
                 <Sparkles
-                  size={15}
+                  size={14}
                   color={selectedCategory === "ALL" ? "#FFFFFF" : "#D97706"}
                 />
                 <Text
                   style={{
                     color: selectedCategory === "ALL" ? "#FFFFFF" : "#1C1917",
-                    fontSize: 13.5,
+                    fontSize: 12.5,
                     fontWeight: "900",
-                    marginLeft: 6,
+                    marginLeft: 5,
                   }}
                 >
                   Tüm Eserler ({allArtifacts.length})
@@ -344,19 +675,23 @@ export default function MirasMuseumScreen() {
                       setSelectedCategory(cls.id);
                     }}
                     scaleTo={0.96}
-                    className="rounded-2xl px-4 py-2.5 flex-row items-center"
                     style={{
+                      borderRadius: 13,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      flexDirection: "row",
+                      alignItems: "center",
                       backgroundColor: isSelected ? "#F59E0B" : "#FFFDF7",
                       borderWidth: 1.5,
                       borderColor: isSelected ? "#FDE68A" : "#E6DEC8",
-                      borderBottomWidth: 4,
+                      borderBottomWidth: 3,
                       borderBottomColor: isSelected ? "#B45309" : "#D6CBB2",
                     }}
                   >
                     <Text
                       style={{
                         color: "#1C1917",
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: "900",
                       }}
                     >
@@ -367,11 +702,11 @@ export default function MirasMuseumScreen() {
               })}
             </ScrollView>
 
-            {/* 31 Storybook Pedestal Artifact Cards Grid */}
+            {/* Responsive Artifact Grid */}
             <View
               style={{
-                flexDirection: isTablet ? "row" : "column",
-                flexWrap: isTablet ? "wrap" : "nowrap",
+                flexDirection: isTablet || isPhoneLandscape ? "row" : "column",
+                flexWrap: isTablet || isPhoneLandscape ? "wrap" : "nowrap",
                 justifyContent: "space-between",
               }}
             >
@@ -387,24 +722,25 @@ export default function MirasMuseumScreen() {
                   <View
                     key={artifact.id}
                     style={{
-                      width: isTablet ? "48.8%" : "100%",
-                      marginBottom: 24,
+                      width: cardWidth as any,
+                      marginBottom: isPhoneLandscape ? 14 : 18,
                     }}
                   >
                     <BouncyPressable
                       onPress={() => handleOpenArtifactInspector(artifact)}
                       scaleTo={0.985}
-                      className="rounded-3xl overflow-hidden"
                       style={{
+                        borderRadius: 22,
+                        overflow: "hidden",
                         backgroundColor: "#FFFDF7",
-                        borderWidth: 2.5,
+                        borderWidth: 2,
                         borderColor: isUnlocked ? "#10B981" : "#E6DEC8",
-                        borderBottomWidth: 6,
+                        borderBottomWidth: 5,
                         borderBottomColor: isUnlocked ? "#047857" : "#D6CBB2",
                         shadowColor: "#78350F",
-                        shadowOffset: { width: 0, height: 6 },
+                        shadowOffset: { width: 0, height: 5 },
                         shadowOpacity: 0.08,
-                        shadowRadius: 14,
+                        shadowRadius: 12,
                         elevation: 3,
                       }}
                     >
@@ -412,30 +748,42 @@ export default function MirasMuseumScreen() {
                       <View
                         style={{
                           backgroundColor: "#FDF8EC",
-                          borderBottomWidth: 2,
+                          borderBottomWidth: 1.5,
                           borderBottomColor: "#E6DEC8",
-                          paddingTop: 14,
-                          paddingBottom: 6,
-                          paddingHorizontal: 16,
+                          paddingTop: 12,
+                          paddingBottom: 4,
+                          paddingHorizontal: 14,
                           alignItems: "center",
                         }}
                       >
-                        {/* Top Status Row */}
-                        <View className="w-full flex-row items-center justify-between mb-2">
+                        <View
+                          style={{
+                            width: "100%",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 6,
+                            marginBottom: 6,
+                          }}
+                        >
                           <View
-                            className="px-3 py-1 rounded-full"
                             style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 999,
                               backgroundColor: "#FFFDF7",
                               borderWidth: 1.5,
                               borderColor: "#E6DEC8",
+                              flexShrink: 1,
                             }}
                           >
                             <Text
                               style={{
                                 color: "#1C1917",
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: "900",
                               }}
+                              numberOfLines={1}
                             >
                               {hero?.name} • +{artifact.points} Puan
                             </Text>
@@ -443,18 +791,23 @@ export default function MirasMuseumScreen() {
 
                           {isUnlocked ? (
                             <View
-                              className="px-3 py-1 rounded-full flex-row items-center"
                               style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 999,
+                                flexDirection: "row",
+                                alignItems: "center",
                                 backgroundColor: "#10B981",
-                                borderBottomWidth: 2.5,
+                                borderBottomWidth: 2,
                                 borderBottomColor: "#047857",
+                                flexShrink: 0,
                               }}
                             >
-                              <CheckCircle2 size={12} color="#FFFFFF" />
+                              <CheckCircle2 size={11} color="#FFFFFF" />
                               <Text
                                 style={{
                                   color: "#FFFFFF",
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: "900",
                                   marginLeft: 4,
                                 }}
@@ -464,40 +817,44 @@ export default function MirasMuseumScreen() {
                             </View>
                           ) : (
                             <View
-                              className="px-3 py-1 rounded-full flex-row items-center"
                               style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 999,
+                                flexDirection: "row",
+                                alignItems: "center",
                                 backgroundColor: "#F59E0B",
-                                borderBottomWidth: 2.5,
+                                borderBottomWidth: 2,
                                 borderBottomColor: "#B45309",
+                                flexShrink: 0,
                               }}
                             >
                               <Sparkles size={11} color="#1C1917" />
                               <Text
                                 style={{
                                   color: "#1C1917",
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: "900",
                                   marginLeft: 4,
                                 }}
                               >
-                                Sergide İncele
+                                İncele
                               </Text>
                             </View>
                           )}
                         </View>
 
-                        {/* Floating Artifact Image */}
                         <Animated.View
                           style={[
                             {
-                              width: 158,
-                              height: 158,
-                              borderRadius: 26,
+                              width: pedestalImageSize,
+                              height: pedestalImageSize,
+                              borderRadius: 22,
                               overflow: "hidden",
-                              borderWidth: 3,
+                              borderWidth: 2.5,
                               borderColor: "#F59E0B",
                               backgroundColor: "#1E1B4B",
-                              marginTop: 6,
+                              marginTop: 4,
                               zIndex: 2,
                             },
                             floatingArtifactStyle,
@@ -512,22 +869,21 @@ export default function MirasMuseumScreen() {
                           )}
                         </Animated.View>
 
-                        <View
-                          style={{ width: "100%", marginTop: -12, zIndex: 1 }}
-                        >
+                        <View style={{ width: "100%", marginTop: -10, zIndex: 1 }}>
                           {renderGoldenMarblePedestalSvg()}
                         </View>
                       </View>
 
                       {/* Card Details Body */}
-                      <View style={{ padding: 18 }}>
+                      <View style={{ padding: isPhoneLandscape ? 14 : 16 }}>
                         <Text
                           style={{
                             color: "#1C1917",
-                            fontSize: 19,
+                            fontSize: isPhoneLandscape ? 16.5 : 18,
                             fontWeight: "900",
-                            marginBottom: 4,
+                            marginBottom: 3,
                           }}
+                          numberOfLines={1}
                         >
                           {artifact.name}
                         </Text>
@@ -535,21 +891,22 @@ export default function MirasMuseumScreen() {
                         <Text
                           style={{
                             color: "#D97706",
-                            fontSize: 13,
+                            fontSize: 12.5,
                             fontWeight: "900",
-                            marginBottom: 8,
+                            marginBottom: 6,
                           }}
+                          numberOfLines={1}
                         >
-                          Unvan Ödülü: “{artifact.unlockedTitle}”
+                          Unvan: “{artifact.unlockedTitle}”
                         </Text>
 
                         <Text
                           style={{
                             color: "#57534E",
-                            fontSize: 14.5,
-                            lineHeight: 21,
+                            fontSize: 13.5,
+                            lineHeight: 19.5,
                             fontWeight: "600",
-                            marginBottom: 14,
+                            marginBottom: 12,
                           }}
                           numberOfLines={2}
                         >
@@ -558,31 +915,46 @@ export default function MirasMuseumScreen() {
 
                         {/* Hotspot Discovery Bar */}
                         <View
-                          className="rounded-2xl p-3 mb-4 flex-row items-center justify-between"
                           style={{
+                            borderRadius: 13,
+                            paddingHorizontal: 11,
+                            paddingVertical: 8,
+                            marginBottom: 12,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
                             backgroundColor: "#F7F3E8",
                             borderWidth: 1.5,
                             borderColor: "#E6DEC8",
                           }}
                         >
-                          <View className="flex-row items-center flex-1 pr-2">
-                            <Search size={14} color="#D97706" />
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              flex: 1,
+                              paddingRight: 8,
+                            }}
+                          >
+                            <Search size={13} color="#D97706" />
                             <Text
                               style={{
                                 color: "#1C1917",
-                                fontSize: 12.5,
+                                fontSize: 12,
                                 fontWeight: "800",
-                                marginLeft: 6,
+                                marginLeft: 5,
                                 flexShrink: 1,
                               }}
+                              numberOfLines={1}
                             >
-                              Sır Noktaları (
-                              {artifact.hotspots.map((h) => h.title).join(", ")})
+                              {artifact.hotspots.map((h) => h.title).join(", ")}
                             </Text>
                           </View>
                           <View
-                            className="px-2.5 py-1 rounded-full"
                             style={{
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 999,
                               backgroundColor:
                                 discoveredCountForArtifact ===
                                 artifact.hotspots.length
@@ -597,7 +969,7 @@ export default function MirasMuseumScreen() {
                                   artifact.hotspots.length
                                     ? "#FFFFFF"
                                     : "#1C1917",
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: "900",
                               }}
                             >
@@ -607,29 +979,35 @@ export default function MirasMuseumScreen() {
                           </View>
                         </View>
 
-                        {/* 3D Tactile Action Buttons */}
-                        <View className="flex-row gap-3">
+                        {/* Clean 1-Line Action Buttons */}
+                        <View style={{ flexDirection: "row", gap: 8 }}>
                           <View
-                            className="rounded-2xl px-4 flex-1 flex-row items-center justify-center"
                             style={{
-                              minHeight: 50,
+                              flex: 1,
+                              borderRadius: 13,
+                              paddingHorizontal: 12,
+                              minHeight: 42,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
                               backgroundColor: "#10B981",
                               borderWidth: 1,
                               borderColor: "#6EE7B7",
-                              borderBottomWidth: 4,
+                              borderBottomWidth: 3.5,
                               borderBottomColor: "#047857",
                             }}
                           >
-                            <Eye size={17} color="#FFFFFF" />
+                            <Eye size={15} color="#FFFFFF" />
                             <Text
                               style={{
                                 color: "#FFFFFF",
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: "900",
-                                marginLeft: 8,
+                                marginLeft: 6,
                               }}
+                              numberOfLines={1}
                             >
-                              Sır Noktalarını Keşfet
+                              Sırları Keşfet
                             </Text>
                           </View>
 
@@ -640,24 +1018,29 @@ export default function MirasMuseumScreen() {
                               router.push(`/chapter/${artifact.chapterId}`);
                             }}
                             scaleTo={0.96}
-                            className="rounded-2xl px-4 flex-row items-center justify-center"
                             style={{
-                              minHeight: 50,
+                              borderRadius: 13,
+                              paddingHorizontal: 13,
+                              minHeight: 42,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
                               backgroundColor: "#F59E0B",
                               borderWidth: 1,
                               borderColor: "#FDE68A",
-                              borderBottomWidth: 4,
+                              borderBottomWidth: 3.5,
                               borderBottomColor: "#B45309",
                             }}
                           >
-                            <BookOpen size={16} color="#1C1917" />
+                            <BookOpen size={15} color="#1C1917" />
                             <Text
                               style={{
                                 color: "#1C1917",
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 fontWeight: "900",
-                                marginLeft: 6,
+                                marginLeft: 5,
                               }}
+                              numberOfLines={1}
                             >
                               Hikâyesi
                             </Text>
@@ -672,7 +1055,7 @@ export default function MirasMuseumScreen() {
           </View>
         </ScrollView>
 
-        {/* Centered 672px Storybook Artifact & Hotspot Inspector Modal */}
+        {/* Responsive Artifact & Hotspot Inspector Modal (2-Column in Landscape!) */}
         <Modal
           visible={!!selectedArtifact}
           transparent
@@ -683,31 +1066,39 @@ export default function MirasMuseumScreen() {
             <View
               style={{
                 flex: 1,
-                backgroundColor: "rgba(28, 25, 23, 0.55)",
+                backgroundColor: "rgba(28, 25, 23, 0.58)",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: isTablet ? 28 : 16,
+                paddingTop: Math.max(14, insets.top + 6),
+                paddingBottom: Math.max(14, insets.bottom + 6),
+                paddingLeft: Math.max(14, insets.left + 8),
+                paddingRight: Math.max(14, insets.right + 8),
               }}
             >
               <View
-                className="rounded-3xl overflow-hidden"
                 style={{
                   width: "100%",
-                  maxWidth: 672,
-                  maxHeight: "90%",
+                  maxWidth: isLandscape ? 880 : 620,
+                  maxHeight: "94%",
+                  borderRadius: 24,
+                  overflow: "hidden",
                   backgroundColor: "#FFFDF7",
                   borderWidth: 2.5,
                   borderColor: "#F59E0B",
-                  borderBottomWidth: 6,
+                  borderBottomWidth: 5,
                   borderBottomColor: "#B45309",
                 }}
               >
                 {/* Modal Top Bar */}
                 <View
-                  className="px-6 py-4 flex-row items-center justify-between"
                   style={{
+                    paddingHorizontal: isTablet ? 20 : 16,
+                    paddingVertical: isPhoneLandscape ? 10 : 13,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     backgroundColor: "#FDF8EC",
-                    borderBottomWidth: 2,
+                    borderBottomWidth: 1.5,
                     borderBottomColor: "#E6DEC8",
                   }}
                 >
@@ -715,7 +1106,7 @@ export default function MirasMuseumScreen() {
                     <Text
                       style={{
                         color: "#0D9488",
-                        fontSize: 11.5,
+                        fontSize: 10.5,
                         fontWeight: "900",
                         letterSpacing: 0.8,
                         textTransform: "uppercase",
@@ -726,9 +1117,10 @@ export default function MirasMuseumScreen() {
                     <Text
                       style={{
                         color: "#1C1917",
-                        fontSize: isTablet ? 21 : 18,
+                        fontSize: isTablet ? 20 : 17,
                         fontWeight: "900",
                       }}
+                      numberOfLines={1}
                     >
                       {selectedArtifact.name}
                     </Text>
@@ -737,289 +1129,61 @@ export default function MirasMuseumScreen() {
                   <BouncyPressable
                     onPress={() => setSelectedArtifact(null)}
                     scaleTo={0.95}
-                    className="rounded-xl px-3 py-2 items-center justify-center"
                     style={{
+                      borderRadius: 11,
+                      paddingHorizontal: 10,
+                      paddingVertical: 7,
+                      alignItems: "center",
+                      justifyContent: "center",
                       backgroundColor: "#F43F5E",
                       borderBottomWidth: 3,
                       borderBottomColor: "#BE123C",
                     }}
                   >
-                    <X size={18} color="#FFFFFF" />
+                    <X size={17} color="#FFFFFF" />
                   </BouncyPressable>
                 </View>
 
-                <ScrollView
-                  contentContainerStyle={{
-                    padding: isTablet ? 24 : 18,
-                  }}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {/* Interactive Artifact Stage */}
+                {isLandscape ? (
+                  /* LANDSCAPE MODAL: 2-Column Split (Stage Left | Scrollable Facts Right) */
                   <View
-                    className="rounded-2xl overflow-hidden items-center justify-center mb-4"
                     style={{
-                      width: "100%",
-                      height: isTablet ? 280 : 235,
-                      backgroundColor: "#1E1B4B",
-                      borderWidth: 2.5,
-                      borderColor: "#F59E0B",
-                      position: "relative",
+                      flexDirection: "row",
+                      padding: isTablet ? 20 : 14,
+                      gap: 16,
+                      maxHeight: isPhoneLandscape ? 290 : 480,
                     }}
                   >
-                    {resolveImageAsset(selectedArtifact.imagePath) && (
-                      <Image
-                        source={resolveImageAsset(selectedArtifact.imagePath)!}
-                        resizeMode="contain"
-                        style={{ width: "86%", height: "86%" }}
-                      />
-                    )}
-
-                    {selectedArtifact.hotspots.map((hotspot, idx) => {
-                      const isSelected = activeHotspot?.id === hotspot.id;
-                      const isDiscovered = discoveredHotspots.includes(
-                        hotspot.id
-                      );
-
-                      return (
-                        <View
-                          key={hotspot.id}
-                          style={{
-                            position: "absolute",
-                            left: `${hotspot.xPercent}%`,
-                            top: `${hotspot.yPercent}%`,
-                            marginLeft: -24,
-                            marginTop: -24,
-                            zIndex: isSelected ? 20 : 10,
-                          }}
-                        >
-                          <Animated.View style={pulsingPinStyle}>
-                            <BouncyPressable
-                              onPress={() => handleSelectHotspot(hotspot)}
-                              className="rounded-full flex-row items-center justify-center px-3.5 py-2"
-                              style={{
-                                backgroundColor: isSelected
-                                  ? "#F59E0B"
-                                  : isDiscovered
-                                  ? "#10B981"
-                                  : "#FFFDF7",
-                                borderWidth: 2,
-                                borderColor: "#FFFFFF",
-                                borderBottomWidth: 3.5,
-                                borderBottomColor: isSelected
-                                  ? "#B45309"
-                                  : isDiscovered
-                                  ? "#047857"
-                                  : "#D6CBB2",
-                              }}
-                            >
-                              <Sparkles
-                                size={13}
-                                color={
-                                  isSelected
-                                    ? "#1C1917"
-                                    : isDiscovered
-                                    ? "#FFFFFF"
-                                    : "#D97706"
-                                }
-                              />
-                              <Text
-                                style={{
-                                  color: isSelected
-                                    ? "#1C1917"
-                                    : isDiscovered
-                                    ? "#FFFFFF"
-                                    : "#1C1917",
-                                  fontSize: 12,
-                                  fontWeight: "900",
-                                  marginLeft: 4,
-                                }}
-                              >
-                                Sır {idx + 1}
-                              </Text>
-                            </BouncyPressable>
-                          </Animated.View>
-                        </View>
-                      );
-                    })}
-                  </View>
-
-                  {/* Clickable Hotspot Selector Pills Row */}
-                  <View className="flex-row flex-wrap gap-2.5 mb-4">
-                    {selectedArtifact.hotspots.map((hotspot, idx) => {
-                      const isSelected = activeHotspot?.id === hotspot.id;
-                      return (
-                        <BouncyPressable
-                          key={hotspot.id}
-                          onPress={() => handleSelectHotspot(hotspot)}
-                          scaleTo={0.96}
-                          className="rounded-2xl px-3.5 py-2 flex-row items-center"
-                          style={{
-                            backgroundColor: isSelected ? "#F59E0B" : "#F7F3E8",
-                            borderWidth: 1.5,
-                            borderColor: isSelected ? "#FDE68A" : "#E6DEC8",
-                            borderBottomWidth: 3.5,
-                            borderBottomColor: isSelected
-                              ? "#B45309"
-                              : "#D6CBB2",
-                          }}
-                        >
-                          <Sparkles
-                            size={13}
-                            color={isSelected ? "#1C1917" : "#D97706"}
-                          />
-                          <Text
-                            style={{
-                              color: "#1C1917",
-                              fontSize: 13,
-                              fontWeight: "900",
-                              marginLeft: 6,
-                            }}
-                          >
-                            {idx + 1}. {hotspot.title}
-                          </Text>
-                        </BouncyPressable>
-                      );
-                    })}
-                  </View>
-
-                  {/* Active Hotspot Detail Card */}
-                  {activeHotspot && (
-                    <View
-                      className="rounded-2xl p-5 mb-4"
-                      style={{
-                        backgroundColor: "#FDF8EC",
-                        borderWidth: 2,
-                        borderColor: "#FDE68A",
-                        borderLeftWidth: 5,
-                        borderLeftColor: "#F59E0B",
-                      }}
-                    >
-                      <View className="flex-row items-center gap-1.5 mb-1.5">
-                        <Sparkles size={15} color="#D97706" />
-                        <Text
-                          style={{
-                            color: "#B45309",
-                            fontSize: 12,
-                            fontWeight: "900",
-                            letterSpacing: 0.5,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          KEŞFEDİLEN TARİHİ SIR NOKTASI
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={{
-                          color: "#1C1917",
-                          fontSize: 18,
-                          fontWeight: "900",
-                          marginBottom: 6,
-                        }}
-                      >
-                        {activeHotspot.title}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#44403C",
-                          fontSize: 15.5,
-                          lineHeight: 24,
-                          fontWeight: "600",
-                        }}
-                      >
-                        {activeHotspot.secretFact}
-                      </Text>
+                    <View style={{ width: "44%" }}>
+                      {renderInspectorStage(
+                        selectedArtifact,
+                        isPhoneLandscape ? 255 : 320
+                      )}
                     </View>
-                  )}
-
-                  {/* Full Historical Context Box */}
-                  <View
-                    className="rounded-2xl p-4 mb-4"
-                    style={{
-                      backgroundColor: "#F7F3E8",
-                      borderWidth: 2,
-                      borderColor: "#E6DEC8",
+                    <ScrollView
+                      style={{ flex: 1 }}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {renderInspectorDetails(selectedArtifact)}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  /* PORTRAIT MODAL: Vertical Stack */
+                  <ScrollView
+                    contentContainerStyle={{
+                      padding: isTablet ? 22 : 16,
                     }}
+                    showsVerticalScrollIndicator={false}
                   >
-                    <Text
-                      style={{
-                        color: "#0D9488",
-                        fontSize: 12,
-                        fontWeight: "900",
-                        letterSpacing: 0.5,
-                        marginBottom: 4,
-                      }}
-                    >
-                      TARİHİ MİRAS ÖZETİ
-                    </Text>
-                    <Text
-                      style={{
-                        color: "#44403C",
-                        fontSize: 14.5,
-                        lineHeight: 22,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {selectedArtifact.historicalNote ||
-                        selectedArtifact.shortDescription}
-                    </Text>
-                  </View>
-
-                  <View className="flex-row gap-3">
-                    <BouncyPressable
-                      onPress={() => {
-                        const targetChapterId = selectedArtifact.chapterId;
-                        setSelectedArtifact(null);
-                        router.push(`/chapter/${targetChapterId}`);
-                      }}
-                      scaleTo={0.97}
-                      className="rounded-2xl py-3.5 px-4 flex-1 flex-row items-center justify-center"
-                      style={{
-                        backgroundColor: "#F59E0B",
-                        borderWidth: 1,
-                        borderColor: "#FDE68A",
-                        borderBottomWidth: 4,
-                        borderBottomColor: "#B45309",
-                      }}
-                    >
-                      <Compass size={17} color="#1C1917" />
-                      <Text
-                        style={{
-                          color: "#1C1917",
-                          fontSize: 14,
-                          fontWeight: "900",
-                          marginLeft: 6,
-                        }}
-                      >
-                        Bölüm Hikâyesine Git
-                      </Text>
-                    </BouncyPressable>
-
-                    <BouncyPressable
-                      onPress={() => setSelectedArtifact(null)}
-                      scaleTo={0.97}
-                      className="rounded-2xl py-3.5 px-5 flex-1 items-center justify-center"
-                      style={{
-                        backgroundColor: "#10B981",
-                        borderWidth: 1,
-                        borderColor: "#6EE7B7",
-                        borderBottomWidth: 4,
-                        borderBottomColor: "#047857",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#FFFFFF",
-                          fontSize: 14.5,
-                          fontWeight: "900",
-                        }}
-                      >
-                        Müzeye Dön
-                      </Text>
-                    </BouncyPressable>
-                  </View>
-                </ScrollView>
+                    <View style={{ marginBottom: 14 }}>
+                      {renderInspectorStage(
+                        selectedArtifact,
+                        isTablet ? 280 : 230
+                      )}
+                    </View>
+                    {renderInspectorDetails(selectedArtifact)}
+                  </ScrollView>
+                )}
               </View>
             </View>
           )}

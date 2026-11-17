@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   Platform,
   Image,
   Modal,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
   Award,
@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Lock,
   X,
+  ArrowRight,
 } from "lucide-react-native";
 import {
   useUserStore,
@@ -35,6 +36,7 @@ import {
   getHeroById,
 } from "../../src/data/storiesData";
 import { resolveImageAsset } from "../../src/utils/imageAssets";
+import { useResponsiveLayout } from "../../src/utils/useResponsiveLayout";
 import { BouncyPressable } from "../../src/components/BouncyPressable";
 
 const MOTTO_PRESETS = [
@@ -54,8 +56,15 @@ const CREST_IMAGE_BY_SYMBOL: Record<BannerSymbolId, string> = {
 };
 
 export default function ApprenticeProfileScreen() {
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const router = useRouter();
+  const {
+    isTablet,
+    isPhoneLandscape,
+    insets,
+    horizontalPadding,
+  } = useResponsiveLayout();
+
+  const isTwoColumn = isTablet || isPhoneLandscape;
 
   const apprenticeName = useUserStore((s) => s.apprenticeName);
   const selectedTitle = useUserStore((s) => s.selectedTitle);
@@ -74,6 +83,10 @@ export default function ApprenticeProfileScreen() {
   const [badgeFilter, setBadgeFilter] = useState<"UNLOCKED" | "ALL">("ALL");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
+  useEffect(() => {
+    setNameInput(apprenticeName);
+  }, [apprenticeName]);
 
   const triggerLightHaptic = () => {
     if (Platform.OS !== "web") {
@@ -99,6 +112,7 @@ export default function ApprenticeProfileScreen() {
       title: "İz Süren Çırak",
       artifactName: "Başlangıç Arması",
       heroName: "Miras Atölyesi",
+      chapterId: "",
       imagePath: "assets/images/badge_crest_lantern.png",
     },
     ...allArtifacts.map((art) => {
@@ -108,6 +122,7 @@ export default function ApprenticeProfileScreen() {
         title: art.unlockedTitle,
         artifactName: art.name,
         heroName: hero?.name || "",
+        chapterId: art.chapterId,
         imagePath: art.imagePath,
       };
     }),
@@ -123,31 +138,40 @@ export default function ApprenticeProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F7F3E8" }}>
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 14,
-            paddingBottom: 120,
+            paddingTop: isPhoneLandscape ? 10 : 14,
+            paddingBottom: isPhoneLandscape ? 20 : 32,
           }}
           showsVerticalScrollIndicator={false}
         >
           <View
             style={{
-              maxWidth: 1080,
+              maxWidth: 1120,
               alignSelf: "center",
               width: "100%",
-              paddingHorizontal: isTablet ? 24 : 14,
+              paddingHorizontal: horizontalPadding,
             }}
           >
             {/* Minimal Header */}
-            <View className="flex-row items-center justify-between mb-4">
-              <View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <View style={{ flex: 1, minWidth: 170 }}>
                 <Text
                   style={{
                     color: "#D97706",
                     fontSize: 10.5,
                     fontWeight: "900",
-                    letterSpacing: 1.1,
+                    letterSpacing: 1,
                     textTransform: "uppercase",
                   }}
                 >
@@ -156,23 +180,28 @@ export default function ApprenticeProfileScreen() {
                 <Text
                   style={{
                     color: "#1C1917",
-                    fontSize: isTablet ? 24 : 20,
+                    fontSize: isPhoneLandscape ? 19 : isTablet ? 24 : 18.5,
                     fontWeight: "900",
                   }}
+                  numberOfLines={1}
                 >
-                  Profil ve Başarı Rozetleri
+                  Profil & Rozetler
                 </Text>
               </View>
 
-              <View className="flex-row items-center gap-2">
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <BouncyPressable
                   onPress={() => {
                     triggerLightHaptic();
                     setShowPrivacyModal(true);
                   }}
                   scaleTo={0.96}
-                  className="px-3 py-2 rounded-xl flex-row items-center"
                   style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
                     backgroundColor: "#FFFDF7",
                     borderWidth: 1.5,
                     borderColor: "#E6DEC8",
@@ -197,8 +226,12 @@ export default function ApprenticeProfileScreen() {
                     setShowResetConfirm(true);
                   }}
                   scaleTo={0.96}
-                  className="px-3 py-2 rounded-xl flex-row items-center"
                   style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
                     backgroundColor: "#FFF1F2",
                     borderWidth: 1.5,
                     borderColor: "#FECDD3",
@@ -221,47 +254,46 @@ export default function ApprenticeProfileScreen() {
 
             <View
               style={{
-                flexDirection: isTablet ? "row" : "column",
+                flexDirection: isTwoColumn ? "row" : "column",
                 alignItems: "flex-start",
-                gap: 18,
+                gap: isPhoneLandscape ? 14 : 18,
               }}
             >
-              {/* LEFT COLUMN: Royal Identity Card + Compact Stats */}
-              <View style={{ width: isTablet ? "44%" : "100%" }}>
+              {/* LEFT COLUMN: Royal Identity Card + Compact Stats + Crest Picker */}
+              <View style={{ width: isTwoColumn ? "44%" : "100%" }}>
                 {/* Royal Crest Identity Card */}
                 <LinearGradient
                   colors={["#1E1B4B", "#0F172A"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
-                    borderRadius: 26,
-                    padding: isTablet ? 22 : 18,
+                    borderRadius: 24,
+                    padding: isTablet ? 20 : 16,
                     borderWidth: 2,
                     borderColor: "#F59E0B",
                     marginBottom: 14,
                     alignItems: "center",
                   }}
                 >
-                  {/* 3D Crest Badge Showcase */}
                   <View
                     style={{
-                      width: 118,
-                      height: 118,
-                      borderRadius: 59,
-                      padding: 4,
+                      width: isPhoneLandscape ? 88 : 112,
+                      height: isPhoneLandscape ? 88 : 112,
+                      borderRadius: 56,
+                      padding: 3.5,
                       backgroundColor: "#F59E0B",
                       shadowColor: "#F59E0B",
                       shadowOffset: { width: 0, height: 6 },
                       shadowOpacity: 0.35,
                       shadowRadius: 12,
                       elevation: 8,
-                      marginBottom: 12,
+                      marginBottom: 10,
                     }}
                   >
                     <View
                       style={{
                         flex: 1,
-                        borderRadius: 55,
+                        borderRadius: 52,
                         overflow: "hidden",
                         backgroundColor: "#0F172A",
                         borderWidth: 2,
@@ -278,11 +310,10 @@ export default function ApprenticeProfileScreen() {
                     </View>
                   </View>
 
-                  {/* Active Symbol Label Pill */}
                   <Text
                     style={{
                       color: "#FBBF24",
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: "800",
                       letterSpacing: 0.8,
                       textTransform: "uppercase",
@@ -294,12 +325,17 @@ export default function ApprenticeProfileScreen() {
 
                   {/* Editable Apprentice Name */}
                   <View
-                    className="flex-row items-center rounded-2xl px-3.5 py-1.5 mb-2.5"
                     style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderRadius: 14,
+                      paddingHorizontal: 12,
+                      paddingVertical: 5,
+                      marginBottom: 10,
                       backgroundColor: "rgba(255,255,255,0.08)",
                       borderWidth: 1,
                       borderColor: "rgba(251,191,36,0.35)",
-                      maxWidth: 260,
+                      maxWidth: 250,
                     }}
                   >
                     <TextInput
@@ -308,15 +344,18 @@ export default function ApprenticeProfileScreen() {
                         setNameInput(val);
                         setApprenticeName(val);
                       }}
+                      maxLength={24}
+                      returnKeyType="done"
                       placeholder="Adını yaz..."
                       placeholderTextColor="#94A3B8"
                       style={{
                         color: "#FFFBEB",
-                        fontSize: 18,
+                        fontSize: 16.5,
                         fontWeight: "900",
                         textAlign: "center",
                         paddingVertical: 2,
-                        minWidth: 140,
+                        minWidth: 120,
+                        flexShrink: 1,
                       }}
                     />
                     <PenLine size={14} color="#FBBF24" style={{ marginLeft: 6 }} />
@@ -324,20 +363,25 @@ export default function ApprenticeProfileScreen() {
 
                   {/* Equipped Title Ribbon */}
                   <View
-                    className="px-4 py-1.5 rounded-full flex-row items-center mb-3"
                     style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 10,
                       backgroundColor: "#F59E0B",
                       borderBottomWidth: 3,
                       borderBottomColor: "#B45309",
                     }}
                   >
-                    <Crown size={14} color="#1C1917" />
+                    <Crown size={13} color="#1C1917" />
                     <Text
                       style={{
                         color: "#1C1917",
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: "900",
-                        marginLeft: 6,
+                        marginLeft: 5,
                       }}
                     >
                       {selectedTitle}
@@ -346,8 +390,12 @@ export default function ApprenticeProfileScreen() {
 
                   {/* Motto Banner Strip */}
                   <View
-                    className="w-full rounded-xl px-3.5 py-2.5 items-center"
                     style={{
+                      width: "100%",
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      alignItems: "center",
                       backgroundColor: "rgba(15, 23, 42, 0.75)",
                       borderWidth: 1,
                       borderColor: "rgba(251, 191, 36, 0.25)",
@@ -356,7 +404,7 @@ export default function ApprenticeProfileScreen() {
                     <Text
                       style={{
                         color: "#FDE68A",
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: "700",
                         fontStyle: "italic",
                         textAlign: "center",
@@ -368,35 +416,47 @@ export default function ApprenticeProfileScreen() {
                 </LinearGradient>
 
                 {/* 4 Compact Stat Cards (2x2 Grid) */}
-                <View className="flex-row flex-wrap justify-between gap-2.5 mb-3.5">
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "space-between",
+                    rowGap: 9,
+                    marginBottom: 14,
+                  }}
+                >
                   {[
                     {
                       label: "Toplam Puan",
                       value: `${totalPoints}`,
                       color: "#D97706",
                       bg: "#FEF3C7",
-                      icon: <Sparkles size={15} color="#D97706" />,
+                      icon: <Sparkles size={14} color="#D97706" />,
                     },
                     {
                       label: "Biten Bölüm",
                       value: `${completedChapters.length}/${totalChaptersCount}`,
                       color: "#059669",
                       bg: "#D1FAE5",
-                      icon: <BookOpen size={15} color="#059669" />,
+                      icon: <BookOpen size={14} color="#059669" />,
                     },
                     {
                       label: "Adalet & Cesaret",
-                      value: `+${virtuePoints.ADALET + virtuePoints.CESARET_MERHAMET}`,
+                      value: `+${
+                        virtuePoints.ADALET + virtuePoints.CESARET_MERHAMET
+                      }`,
                       color: "#E11D48",
                       bg: "#FFE4E6",
-                      icon: <ShieldCheck size={15} color="#E11D48" />,
+                      icon: <ShieldCheck size={14} color="#E11D48" />,
                     },
                     {
                       label: "Bilim & İyilik",
-                      value: `+${virtuePoints.BILGELIK + virtuePoints.IHSAN_MEDENIYET}`,
+                      value: `+${
+                        virtuePoints.BILGELIK + virtuePoints.IHSAN_MEDENIYET
+                      }`,
                       color: "#2563EB",
                       bg: "#DBEAFE",
-                      icon: <Award size={15} color="#2563EB" />,
+                      icon: <Award size={14} color="#2563EB" />,
                     },
                   ].map((stat) => (
                     <View
@@ -404,27 +464,36 @@ export default function ApprenticeProfileScreen() {
                       style={{
                         width: "48.2%",
                         backgroundColor: "#FFFDF7",
-                        borderRadius: 18,
-                        padding: 12,
+                        borderRadius: 16,
+                        padding: 11,
                         borderWidth: 1.5,
                         borderColor: "#E6DEC8",
                       }}
                     >
-                      <View className="flex-row items-center justify-between mb-1">
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 3,
+                        }}
+                      >
                         <Text
                           style={{
                             color: "#78716C",
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: "800",
+                            flexShrink: 1,
                           }}
+                          numberOfLines={1}
                         >
                           {stat.label}
                         </Text>
                         <View
                           style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 8,
+                            width: 24,
+                            height: 24,
+                            borderRadius: 7,
                             backgroundColor: stat.bg,
                             alignItems: "center",
                             justifyContent: "center",
@@ -436,7 +505,7 @@ export default function ApprenticeProfileScreen() {
                       <Text
                         style={{
                           color: stat.color,
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: "900",
                         }}
                       >
@@ -446,12 +515,12 @@ export default function ApprenticeProfileScreen() {
                   ))}
                 </View>
 
-                {/* 3D Crest Emblem Picker + Motto Picker in a Single Clean Card */}
+                {/* 3D Crest Emblem Picker + Motto Picker */}
                 <View
                   style={{
                     backgroundColor: "#FFFDF7",
-                    borderRadius: 22,
-                    padding: 16,
+                    borderRadius: 20,
+                    padding: 15,
                     borderWidth: 2,
                     borderColor: "#E6DEC8",
                   }}
@@ -459,7 +528,7 @@ export default function ApprenticeProfileScreen() {
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 14.5,
+                      fontSize: 14,
                       fontWeight: "900",
                       marginBottom: 10,
                     }}
@@ -467,7 +536,15 @@ export default function ApprenticeProfileScreen() {
                     Kraliyet Armanı Seç
                   </Text>
 
-                  <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-4">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
+                      rowGap: 8,
+                      marginBottom: 14,
+                    }}
+                  >
                     {BANNER_SYMBOL_OPTIONS.map((sym) => {
                       const isSelected = bannerConfig.symbol === sym.id;
                       const thumbSource = resolveImageAsset(
@@ -484,9 +561,9 @@ export default function ApprenticeProfileScreen() {
                           style={{
                             width: "31.5%",
                             backgroundColor: isSelected ? "#FEF3C7" : "#F7F3E8",
-                            borderRadius: 16,
+                            borderRadius: 14,
                             paddingVertical: 8,
-                            paddingHorizontal: 6,
+                            paddingHorizontal: 5,
                             alignItems: "center",
                             borderWidth: 2,
                             borderColor: isSelected ? "#F59E0B" : "#E6DEC8",
@@ -494,9 +571,9 @@ export default function ApprenticeProfileScreen() {
                         >
                           <View
                             style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 24,
+                              width: 44,
+                              height: 44,
+                              borderRadius: 22,
                               overflow: "hidden",
                               marginBottom: 5,
                               borderWidth: 1.5,
@@ -516,7 +593,7 @@ export default function ApprenticeProfileScreen() {
                             numberOfLines={1}
                             style={{
                               color: isSelected ? "#92400E" : "#1C1917",
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: "900",
                               textAlign: "center",
                             }}
@@ -531,14 +608,14 @@ export default function ApprenticeProfileScreen() {
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 14.5,
+                      fontSize: 14,
                       fontWeight: "900",
                       marginBottom: 8,
                     }}
                   >
                     Sancak Sözü
                   </Text>
-                  <View className="flex-row flex-wrap gap-1.5">
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {MOTTO_PRESETS.map((motto) => {
                       const isSelected = bannerConfig.motto === motto;
                       return (
@@ -549,8 +626,10 @@ export default function ApprenticeProfileScreen() {
                             updateBannerConfig({ motto });
                           }}
                           scaleTo={0.97}
-                          className="rounded-xl px-3 py-2"
                           style={{
+                            borderRadius: 11,
+                            paddingHorizontal: 10,
+                            paddingVertical: 7,
                             backgroundColor: isSelected ? "#1E1B4B" : "#F7F3E8",
                             borderWidth: 1.5,
                             borderColor: isSelected ? "#F59E0B" : "#E6DEC8",
@@ -573,23 +652,31 @@ export default function ApprenticeProfileScreen() {
               </View>
 
               {/* RIGHT COLUMN: Visual Achievement Badges & Titles Showcase */}
-              <View style={{ width: isTablet ? "54%" : "100%" }}>
+              <View style={{ width: isTwoColumn ? "54%" : "100%" }}>
                 <View
                   style={{
                     backgroundColor: "#FFFDF7",
-                    borderRadius: 24,
-                    padding: isTablet ? 20 : 15,
+                    borderRadius: 22,
+                    padding: isTablet ? 18 : 14,
                     borderWidth: 2,
                     borderColor: "#E6DEC8",
                   }}
                 >
-                  {/* Header + Filter Pills */}
-                  <View className="flex-row items-center justify-between flex-wrap gap-2 mb-3">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginBottom: 12,
+                    }}
+                  >
                     <View>
                       <Text
                         style={{
                           color: "#1C1917",
-                          fontSize: 17,
+                          fontSize: 16.5,
                           fontWeight: "900",
                         }}
                       >
@@ -602,23 +689,28 @@ export default function ApprenticeProfileScreen() {
                           fontWeight: "700",
                         }}
                       >
-                        İstediğin rozete dokunarak unvanını kuşan
+                        Kazanılanları kuşan, kilitlilerin bölümüne git
                       </Text>
                     </View>
 
                     <View
-                      className="flex-row rounded-xl p-1"
                       style={{
+                        flexDirection: "row",
+                        borderRadius: 11,
+                        padding: 3,
                         backgroundColor: "#F7F3E8",
                         borderWidth: 1,
                         borderColor: "#E6DEC8",
                       }}
                     >
                       {[
-                        { id: "ALL" as const, label: `Tümü (${allPossibleTitles.length})` },
+                        {
+                          id: "ALL" as const,
+                          label: `Tümü (${allPossibleTitles.length})`,
+                        },
                         {
                           id: "UNLOCKED" as const,
-                          label: `Kazanılan (${unlockedTitles.length})`,
+                          label: `Açılan (${unlockedTitles.length})`,
                         },
                       ].map((tab) => {
                         const active = badgeFilter === tab.id;
@@ -630,9 +722,13 @@ export default function ApprenticeProfileScreen() {
                               setBadgeFilter(tab.id);
                             }}
                             scaleTo={0.97}
-                            className="px-3 py-1.5 rounded-lg"
                             style={{
-                              backgroundColor: active ? "#1E1B4B" : "transparent",
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              backgroundColor: active
+                                ? "#1E1B4B"
+                                : "transparent",
                             }}
                           >
                             <Text
@@ -650,8 +746,15 @@ export default function ApprenticeProfileScreen() {
                     </View>
                   </View>
 
-                  {/* 2-Column Visual Badge Grid */}
-                  <View className="flex-row flex-wrap justify-between gap-y-2.5">
+                  {/* Responsive Badge Grid */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
+                      rowGap: 9,
+                    }}
+                  >
                     {displayedTitles.map((item) => {
                       const isUnlocked =
                         item.id === "starter-title" ||
@@ -664,15 +767,21 @@ export default function ApprenticeProfileScreen() {
                           key={item.id}
                           onPress={() => {
                             triggerLightHaptic();
-                            setSelectedTitle(item.title);
+                            if (isUnlocked) {
+                              setSelectedTitle(item.title);
+                            } else if (item.chapterId) {
+                              router.push(`/chapter/${item.chapterId}`);
+                            }
                           }}
                           scaleTo={0.97}
                           style={{
                             width: isTablet ? "48.8%" : "100%",
                             backgroundColor: isSelected
                               ? "#FEF3C7"
+                              : isUnlocked
+                              ? "#ECFDF5"
                               : "#F7F3E8",
-                            borderRadius: 18,
+                            borderRadius: 16,
                             padding: 10,
                             flexDirection: "row",
                             alignItems: "center",
@@ -684,12 +793,11 @@ export default function ApprenticeProfileScreen() {
                               : "#E6DEC8",
                           }}
                         >
-                          {/* 3D Badge Visual */}
                           <View
                             style={{
-                              width: 52,
-                              height: 52,
-                              borderRadius: 15,
+                              width: 48,
+                              height: 48,
+                              borderRadius: 14,
                               overflow: "hidden",
                               backgroundColor: "#1E1B4B",
                               borderWidth: 2,
@@ -705,13 +813,16 @@ export default function ApprenticeProfileScreen() {
                             {badgeImg && (
                               <Image
                                 source={badgeImg}
-                                style={{ width: "100%", height: "100%" }}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  opacity: isUnlocked ? 1 : 0.72,
+                                }}
                                 resizeMode="cover"
                               />
                             )}
                           </View>
 
-                          {/* Title & Hero Name */}
                           <View style={{ flex: 1, paddingRight: 6 }}>
                             <Text
                               numberOfLines={1}
@@ -734,7 +845,7 @@ export default function ApprenticeProfileScreen() {
                             >
                               {item.heroName}
                             </Text>
-                            {isUnlocked && (
+                            {isUnlocked ? (
                               <Text
                                 style={{
                                   color: "#059669",
@@ -745,16 +856,32 @@ export default function ApprenticeProfileScreen() {
                               >
                                 ✓ Kazanıldı
                               </Text>
+                            ) : (
+                              <Text
+                                style={{
+                                  color: "#B45309",
+                                  fontSize: 10,
+                                  fontWeight: "800",
+                                  marginTop: 2,
+                                }}
+                              >
+                                Bölümü tamamlayınca açılır
+                              </Text>
                             )}
                           </View>
 
-                          {/* Status Pill */}
                           {isSelected ? (
                             <View
-                              className="px-2.5 py-1 rounded-full flex-row items-center"
-                              style={{ backgroundColor: "#D97706" }}
+                              style={{
+                                paddingHorizontal: 9,
+                                paddingVertical: 5,
+                                borderRadius: 999,
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: "#D97706",
+                              }}
                             >
-                              <CheckCircle2 size={12} color="#FFFFFF" />
+                              <CheckCircle2 size={11} color="#FFFFFF" />
                               <Text
                                 style={{
                                   color: "#FFFFFF",
@@ -766,24 +893,51 @@ export default function ApprenticeProfileScreen() {
                                 Aktif
                               </Text>
                             </View>
+                          ) : isUnlocked ? (
+                            <View
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 999,
+                                backgroundColor: "#10B981",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: "#FFFFFF",
+                                  fontSize: 10.5,
+                                  fontWeight: "900",
+                                }}
+                              >
+                                Kuşan
+                              </Text>
+                            </View>
                           ) : (
                             <View
-                              className="px-2.5 py-1 rounded-full"
                               style={{
+                                paddingHorizontal: 9,
+                                paddingVertical: 5,
+                                borderRadius: 999,
+                                flexDirection: "row",
+                                alignItems: "center",
                                 backgroundColor: "#FFFDF7",
                                 borderWidth: 1,
                                 borderColor: "#D6CBB2",
                               }}
                             >
+                              <Lock size={10} color="#78716C" />
                               <Text
                                 style={{
                                   color: "#57534E",
                                   fontSize: 10.5,
                                   fontWeight: "800",
+                                  marginLeft: 3,
+                                  marginRight: 2,
                                 }}
                               >
-                                Seç
+                                Aç
                               </Text>
+                              <ArrowRight size={10} color="#78716C" />
                             </View>
                           )}
                         </BouncyPressable>
@@ -809,94 +963,105 @@ export default function ApprenticeProfileScreen() {
               backgroundColor: "rgba(15, 23, 42, 0.65)",
               alignItems: "center",
               justifyContent: "center",
-              padding: 20,
+              paddingTop: Math.max(16, insets.top + 8),
+              paddingBottom: Math.max(16, insets.bottom + 8),
+              paddingLeft: Math.max(16, insets.left + 8),
+              paddingRight: Math.max(16, insets.right + 8),
             }}
           >
             <View
               style={{
                 width: "100%",
                 maxWidth: 400,
+                maxHeight: "90%",
                 backgroundColor: "#FFFDF7",
-                borderRadius: 26,
-                padding: 22,
+                borderRadius: 24,
+                padding: 20,
                 borderWidth: 2,
                 borderColor: "#E6DEC8",
               }}
             >
-              <Text
-                style={{
-                  color: "#1C1917",
-                  fontSize: 18,
-                  fontWeight: "900",
-                  marginBottom: 8,
-                }}
-              >
-                İlerlemeyi Sıfırlamak İstiyor musun?
-              </Text>
-              <Text
-                style={{
-                  color: "#57534E",
-                  fontSize: 13.5,
-                  fontWeight: "600",
-                  lineHeight: 20,
-                  marginBottom: 18,
-                }}
-              >
-                Kazandığın puanlar, açılan müze eserleri ve tamamlanan bölümler
-                baştan başlayacak.
-              </Text>
-
-              <View className="flex-row gap-2.5">
-                <BouncyPressable
-                  onPress={() => setShowResetConfirm(false)}
-                  scaleTo={0.97}
-                  className="flex-1 py-3 rounded-xl items-center"
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text
                   style={{
-                    backgroundColor: "#F7F3E8",
-                    borderWidth: 1.5,
-                    borderColor: "#E6DEC8",
+                    color: "#1C1917",
+                    fontSize: 18,
+                    fontWeight: "900",
+                    marginBottom: 8,
                   }}
                 >
-                  <Text
-                    style={{
-                      color: "#44403C",
-                      fontSize: 13.5,
-                      fontWeight: "800",
-                    }}
-                  >
-                    Vazgeç
-                  </Text>
-                </BouncyPressable>
-
-                <BouncyPressable
-                  onPress={() => {
-                    triggerLightHaptic();
-                    resetProgress();
-                    setNameInput("İz Süren Çırak");
-                    setShowResetConfirm(false);
-                  }}
-                  scaleTo={0.97}
-                  className="flex-1 py-3 rounded-xl items-center"
+                  İlerlemeyi Sıfırlamak İstiyor musun?
+                </Text>
+                <Text
                   style={{
-                    backgroundColor: "#E11D48",
+                    color: "#57534E",
+                    fontSize: 13.5,
+                    fontWeight: "600",
+                    lineHeight: 20,
+                    marginBottom: 18,
                   }}
                 >
-                  <Text
+                  Kazandığın puanlar, açılan müze eserleri ve tamamlanan bölümler
+                  baştan başlayacak.
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <BouncyPressable
+                    onPress={() => setShowResetConfirm(false)}
+                    scaleTo={0.97}
                     style={{
-                      color: "#FFFFFF",
-                      fontSize: 13.5,
-                      fontWeight: "900",
+                      flex: 1,
+                      paddingVertical: 11,
+                      borderRadius: 13,
+                      alignItems: "center",
+                      backgroundColor: "#F7F3E8",
+                      borderWidth: 1.5,
+                      borderColor: "#E6DEC8",
                     }}
                   >
-                    Evet, Sıfırla
-                  </Text>
-                </BouncyPressable>
-              </View>
+                    <Text
+                      style={{
+                        color: "#44403C",
+                        fontSize: 13.5,
+                        fontWeight: "800",
+                      }}
+                    >
+                      Vazgeç
+                    </Text>
+                  </BouncyPressable>
+
+                  <BouncyPressable
+                    onPress={() => {
+                      triggerLightHaptic();
+                      resetProgress();
+                      setShowResetConfirm(false);
+                    }}
+                    scaleTo={0.97}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 11,
+                      borderRadius: 13,
+                      alignItems: "center",
+                      backgroundColor: "#E11D48",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 13.5,
+                        fontWeight: "900",
+                      }}
+                    >
+                      Evet, Sıfırla
+                    </Text>
+                  </BouncyPressable>
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
 
-        {/* Gizlilik & Ebeveyn Güvencesi Modalı (App Store Kids / Education Uyumluluğu) */}
+        {/* Gizlilik & Ebeveyn Güvencesi Modalı */}
         <Modal
           visible={showPrivacyModal}
           transparent
@@ -909,30 +1074,42 @@ export default function ApprenticeProfileScreen() {
               backgroundColor: "rgba(15, 23, 42, 0.65)",
               alignItems: "center",
               justifyContent: "center",
-              padding: 20,
+              paddingTop: Math.max(16, insets.top + 8),
+              paddingBottom: Math.max(16, insets.bottom + 8),
+              paddingLeft: Math.max(16, insets.left + 8),
+              paddingRight: Math.max(16, insets.right + 8),
             }}
           >
             <View
               style={{
                 width: "100%",
                 maxWidth: 460,
+                maxHeight: "90%",
                 backgroundColor: "#FFFDF7",
-                borderRadius: 26,
-                padding: 22,
+                borderRadius: 24,
+                padding: 20,
                 borderWidth: 2,
                 borderColor: "#E6DEC8",
               }}
             >
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center">
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                   <ShieldCheck size={20} color="#059669" />
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: "900",
                       marginLeft: 8,
                     }}
+                    numberOfLines={1}
                   >
                     Gizlilik ve Ebeveyn Güvencesi
                   </Text>
@@ -940,63 +1117,75 @@ export default function ApprenticeProfileScreen() {
                 <BouncyPressable
                   onPress={() => setShowPrivacyModal(false)}
                   scaleTo={0.94}
-                  className="w-8 h-8 rounded-full items-center justify-center"
-                  style={{ backgroundColor: "#F7F3E8" }}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#F7F3E8",
+                  }}
                 >
                   <X size={16} color="#57534E" />
                 </BouncyPressable>
               </View>
 
-              <Text
-                style={{
-                  color: "#44403C",
-                  fontSize: 13,
-                  fontWeight: "600",
-                  lineHeight: 20,
-                  marginBottom: 10,
-                }}
-              >
-                • <Text style={{ fontWeight: "900" }}>%100 Cihaz İçi Veri Saklama:</Text> Çırak adı, kazanılan eserler ve hikâye ilerlemeleri yalnızca cihazınızın kendi hafızasında (AsyncStorage) saklanır; hiçbir sunucuya gönderilmez.
-              </Text>
-              <Text
-                style={{
-                  color: "#44403C",
-                  fontSize: 13,
-                  fontWeight: "600",
-                  lineHeight: 20,
-                  marginBottom: 10,
-                }}
-              >
-                • <Text style={{ fontWeight: "900" }}>Kişisel Veri ve Takip Yoktur:</Text> Uygulama konum, kamera, mikrofon veya rehber izni talep etmez; üçüncü taraf reklam veya takip kodu içermez.
-              </Text>
-              <Text
-                style={{
-                  color: "#44403C",
-                  fontSize: 13,
-                  fontWeight: "600",
-                  lineHeight: 20,
-                  marginBottom: 16,
-                }}
-              >
-                • <Text style={{ fontWeight: "900" }}>Pedagojik ve Tarihi Hassasiyet:</Text> 7–12 yaş grubu için özel olarak hazırlanmış 25 öncü şahsiyet, 56 bölüm ve etkileşimli müze içeriği tamamen reklamsız ve güvenli bir öğrenme ortamı sunar.
-              </Text>
-
-              <BouncyPressable
-                onPress={() => setShowPrivacyModal(false)}
-                scaleTo={0.97}
-                className="py-3 rounded-xl items-center"
-                style={{ backgroundColor: "#1E1B4B" }}
-              >
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text
                   style={{
-                    color: "#FBBF24",
-                    fontSize: 13.5,
-                    fontWeight: "900",
+                    color: "#44403C",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    lineHeight: 20,
+                    marginBottom: 10,
                   }}
                 >
-                  Anladım, Kapat
+                  • <Text style={{ fontWeight: "900" }}>%100 Cihaz İçi Veri Saklama:</Text> Çırak adı, kazanılan eserler ve hikâye ilerlemeleri yalnızca cihazınızın kendi hafızasında (AsyncStorage) saklanır; hiçbir sunucuya gönderilmez.
                 </Text>
-              </BouncyPressable>
+                <Text
+                  style={{
+                    color: "#44403C",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    lineHeight: 20,
+                    marginBottom: 10,
+                  }}
+                >
+                  • <Text style={{ fontWeight: "900" }}>Kişisel Veri ve Takip Yoktur:</Text> Uygulama konum, kamera, mikrofon veya rehber izni talep etmez; üçüncü taraf reklam veya takip kodu içermez.
+                </Text>
+                <Text
+                  style={{
+                    color: "#44403C",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    lineHeight: 20,
+                    marginBottom: 16,
+                  }}
+                >
+                  • <Text style={{ fontWeight: "900" }}>Pedagojik ve Tarihi Hassasiyet:</Text> 7–12 yaş grubu için özel olarak hazırlanmış 25 öncü şahsiyet, 56 bölüm ve etkileşimli müze içeriği tamamen reklamsız ve güvenli bir öğrenme ortamı sunar.
+                </Text>
+
+                <BouncyPressable
+                  onPress={() => setShowPrivacyModal(false)}
+                  scaleTo={0.97}
+                  style={{
+                    paddingVertical: 11,
+                    borderRadius: 13,
+                    alignItems: "center",
+                    backgroundColor: "#1E1B4B",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#FBBF24",
+                      fontSize: 13.5,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Anladım, Kapat
+                  </Text>
+                </BouncyPressable>
+              </ScrollView>
             </View>
           </View>
         </Modal>

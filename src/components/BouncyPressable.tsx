@@ -33,7 +33,7 @@ export const BouncyPressable: React.FC<BouncyPressableProps> = ({
   return (
     <AnimatedPressable
       className={className}
-      style={[ { minHeight: 56 }, style, animatedStyle ]}
+      style={[style, animatedStyle]}
       onPressIn={(e) => {
         scale.value = withSpring(scaleTo, { damping: 14, stiffness: 260 });
         onPressIn?.(e);

@@ -5,7 +5,6 @@ import {
   Modal,
   ScrollView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import {
@@ -20,6 +19,7 @@ import {
 } from "lucide-react-native";
 import { HEROES_DATA, getAllChapters } from "../data/storiesData";
 import { useUserStore } from "../store/useUserStore";
+import { useResponsiveLayout } from "../utils/useResponsiveLayout";
 import { BouncyPressable } from "./BouncyPressable";
 
 export interface FamilyGuideModalProps {
@@ -31,8 +31,7 @@ export const FamilyGuideModal: React.FC<FamilyGuideModalProps> = ({
   visible,
   onClose,
 }) => {
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
+  const { isTablet, isPhoneLandscape, insets } = useResponsiveLayout();
 
   const apprenticeName = useUserStore((s) => s.apprenticeName);
   const selectedTitle = useUserStore((s) => s.selectedTitle);
@@ -74,7 +73,10 @@ export const FamilyGuideModal: React.FC<FamilyGuideModalProps> = ({
           backgroundColor: "rgba(28, 25, 23, 0.45)",
           alignItems: "center",
           justifyContent: "center",
-          padding: isTablet ? 28 : 16,
+          paddingTop: Math.max(14, insets.top + 6),
+          paddingBottom: Math.max(14, insets.bottom + 6),
+          paddingLeft: Math.max(14, insets.left + 8),
+          paddingRight: Math.max(14, insets.right + 8),
         }}
       >
         {/* Centered max-w-2xl (672px) Clean White Storybook Modal Card */}
@@ -82,8 +84,8 @@ export const FamilyGuideModal: React.FC<FamilyGuideModalProps> = ({
           className="rounded-3xl overflow-hidden"
           style={{
             width: "100%",
-            maxWidth: 672,
-            maxHeight: "90%",
+            maxWidth: isPhoneLandscape ? 720 : 672,
+            maxHeight: "94%",
             backgroundColor: "#FFFFFF",
             borderWidth: 1,
             borderColor: "#E7E5E4",
@@ -96,8 +98,12 @@ export const FamilyGuideModal: React.FC<FamilyGuideModalProps> = ({
         >
           {/* Top Header Bar */}
           <View
-            className="px-6 py-4 flex-row items-center justify-between"
             style={{
+              paddingHorizontal: isTablet ? 20 : 14,
+              paddingVertical: isPhoneLandscape ? 10 : 14,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
               backgroundColor: "#FFFFFF",
               borderBottomWidth: 1,
               borderBottomColor: "#E7E5E4",

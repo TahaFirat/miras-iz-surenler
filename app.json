@@ -2,7 +2,7 @@
   "expo": {
     "name": "MİRAS: İz Sürenler",
     "slug": "miras-iz-surenler",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "miras",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.miras.izsurenler",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "CFBundleDisplayName": "MİRAS: İz Sürenler",
         "CFBundleDevelopmentRegion": "tr",
