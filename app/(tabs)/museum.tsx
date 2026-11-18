@@ -46,10 +46,12 @@ export default function MirasMuseumScreen() {
   const router = useRouter();
   const {
     width,
+    height: windowHeight,
     isLandscape,
     isTablet,
     isPhoneLandscape,
     isTabletLandscape,
+    isSmallPhone,
     insets,
     horizontalPadding,
   } = useResponsiveLayout();
@@ -156,10 +158,22 @@ export default function MirasMuseumScreen() {
       ? "48.8%"
       : "100%";
 
-  const pedestalImageSize = isPhoneLandscape ? 124 : isTablet ? 156 : 148;
+  const pedestalImageSize = isPhoneLandscape
+    ? 92
+    : isTablet
+    ? 150
+    : isSmallPhone
+    ? 104
+    : 114;
+
+  const landscapeModalBodyHeight = Math.max(
+    148,
+    Math.min(isTablet ? 400 : 210, windowHeight - (insets.top + insets.bottom + 132))
+  );
+  const landscapeStageHeight = Math.max(130, landscapeModalBodyHeight - 24);
 
   const renderGoldenMarblePedestalSvg = () => (
-    <Svg width="100%" height="50" viewBox="0 0 260 56">
+    <Svg width="100%" height={isTablet ? 44 : 36} viewBox="0 0 260 56">
       <Defs>
         <RadialGradient id="pedGlowGold" cx="50%" cy="45%" r="50%">
           <Stop offset="0%" stopColor="#F59E0B" stopOpacity="0.28" />
@@ -645,7 +659,8 @@ export default function MirasMuseumScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingBottom: 14 }}
+              style={{ flexGrow: 0, flexShrink: 0, marginBottom: isPhoneLandscape ? 10 : 12 }}
+              contentContainerStyle={{ gap: 8, alignItems: "center" }}
             >
               <BouncyPressable
                 onPress={() => {
@@ -1093,31 +1108,34 @@ export default function MirasMuseumScreen() {
                 backgroundColor: "rgba(28, 25, 23, 0.58)",
                 alignItems: "center",
                 justifyContent: "center",
-                paddingTop: Math.max(14, insets.top + 6),
-                paddingBottom: Math.max(14, insets.bottom + 6),
-                paddingLeft: Math.max(14, insets.left + 8),
-                paddingRight: Math.max(14, insets.right + 8),
+                paddingTop: Math.max(isPhoneLandscape ? 6 : 14, insets.top + 4),
+                paddingBottom: Math.max(
+                  isPhoneLandscape ? 6 : 14,
+                  insets.bottom + 4
+                ),
+                paddingLeft: Math.max(12, insets.left + 8),
+                paddingRight: Math.max(12, insets.right + 8),
               }}
             >
               <View
                 style={{
                   width: "100%",
                   maxWidth: isLandscape ? 880 : 620,
-                  maxHeight: "94%",
-                  borderRadius: 24,
+                  maxHeight: isPhoneLandscape ? "97%" : "94%",
+                  borderRadius: isPhoneLandscape ? 18 : 24,
                   overflow: "hidden",
                   backgroundColor: "#FFFDF7",
                   borderWidth: 2.5,
                   borderColor: "#F59E0B",
-                  borderBottomWidth: 5,
+                  borderBottomWidth: isPhoneLandscape ? 4 : 5,
                   borderBottomColor: "#B45309",
                 }}
               >
                 {/* Modal Top Bar */}
                 <View
                   style={{
-                    paddingHorizontal: isTablet ? 20 : 16,
-                    paddingVertical: isPhoneLandscape ? 10 : 13,
+                    paddingHorizontal: isTablet ? 20 : 14,
+                    paddingVertical: isPhoneLandscape ? 7 : 13,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -1130,7 +1148,7 @@ export default function MirasMuseumScreen() {
                     <Text
                       style={{
                         color: "#0D9488",
-                        fontSize: 10.5,
+                        fontSize: isPhoneLandscape ? 9.5 : 10.5,
                         fontWeight: "900",
                         letterSpacing: 0.8,
                         textTransform: "uppercase",
@@ -1141,7 +1159,7 @@ export default function MirasMuseumScreen() {
                     <Text
                       style={{
                         color: "#1C1917",
-                        fontSize: isTablet ? 20 : 17,
+                        fontSize: isTablet ? 20 : isPhoneLandscape ? 15 : 17,
                         fontWeight: "900",
                       }}
                       numberOfLines={1}
@@ -1154,9 +1172,9 @@ export default function MirasMuseumScreen() {
                     onPress={() => setSelectedArtifact(null)}
                     scaleTo={0.95}
                     style={{
-                      borderRadius: 11,
-                      paddingHorizontal: 10,
-                      paddingVertical: 7,
+                      borderRadius: 10,
+                      paddingHorizontal: isPhoneLandscape ? 8 : 10,
+                      paddingVertical: isPhoneLandscape ? 5 : 7,
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: "#F43F5E",
@@ -1164,7 +1182,7 @@ export default function MirasMuseumScreen() {
                       borderBottomColor: "#BE123C",
                     }}
                   >
-                    <X size={17} color="#FFFFFF" />
+                    <X size={isPhoneLandscape ? 15 : 17} color="#FFFFFF" />
                   </BouncyPressable>
                 </View>
 
@@ -1173,19 +1191,20 @@ export default function MirasMuseumScreen() {
                   <View
                     style={{
                       flexDirection: "row",
-                      padding: isTablet ? 20 : 14,
-                      gap: 16,
-                      maxHeight: isPhoneLandscape ? 235 : 420,
+                      padding: isTablet ? 20 : 11,
+                      gap: isPhoneLandscape ? 12 : 16,
+                      height: landscapeModalBodyHeight,
                     }}
                   >
-                    <View style={{ width: "44%" }}>
+                    <View style={{ width: "42%", justifyContent: "center" }}>
                       {renderInspectorStage(
                         selectedArtifact,
-                        isPhoneLandscape ? 205 : 320
+                        landscapeStageHeight
                       )}
                     </View>
                     <ScrollView
                       style={{ flex: 1 }}
+                      contentContainerStyle={{ paddingBottom: 6 }}
                       showsVerticalScrollIndicator={false}
                     >
                       {renderInspectorDetails(selectedArtifact)}
@@ -1196,14 +1215,14 @@ export default function MirasMuseumScreen() {
                   <ScrollView
                     style={{ flexShrink: 1 }}
                     contentContainerStyle={{
-                      padding: isTablet ? 22 : 16,
+                      padding: isTablet ? 22 : 15,
                     }}
                     showsVerticalScrollIndicator={false}
                   >
-                    <View style={{ marginBottom: 14 }}>
+                    <View style={{ marginBottom: 12 }}>
                       {renderInspectorStage(
                         selectedArtifact,
-                        isTablet ? 270 : 215
+                        isTablet ? 260 : isSmallPhone ? 190 : 210
                       )}
                     </View>
                     {renderInspectorDetails(selectedArtifact)}

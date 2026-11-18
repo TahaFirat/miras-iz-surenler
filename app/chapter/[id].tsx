@@ -732,10 +732,12 @@ export default function InteractiveChapterPlayerScreen() {
     );
   };
 
-  // Portrait artwork height scales smoothly with screen height (no tiny crushed 120px strip!)
+  // Portrait artwork height scales smoothly with screen height (slimmer on small phones so story text has plenty of breathing room!)
   const portraitArtworkHeight = isTablet
-    ? Math.round(Math.max(300, Math.min(400, windowHeight * 0.34)))
-    : Math.round(Math.max(168, Math.min(238, windowHeight * 0.27)));
+    ? Math.round(Math.max(280, Math.min(380, windowHeight * 0.33)))
+    : windowHeight < 740
+    ? Math.round(Math.max(145, Math.min(180, windowHeight * 0.24)))
+    : Math.round(Math.max(170, Math.min(210, windowHeight * 0.25)));
 
   // ILLUSTRATED SCENE ARTWORK PANEL
   const renderArtworkPanel = () => {
@@ -1051,9 +1053,11 @@ export default function InteractiveChapterPlayerScreen() {
           {/* Smooth Scrollable Middle Content */}
           <ScrollView
             ref={cardScrollRef}
-            style={{ flex: 1 }}
+            style={{ flex: 1, marginBottom: 4 }}
             contentContainerStyle={{
-              paddingVertical: isPhoneLandscape ? 8 : 10,
+              paddingTop: isPhoneLandscape ? 8 : 10,
+              paddingBottom: 20,
+              paddingRight: isTablet ? 8 : 11,
               flexGrow: 1,
             }}
             showsVerticalScrollIndicator
@@ -1121,9 +1125,9 @@ export default function InteractiveChapterPlayerScreen() {
                         onPress={() => handleSelectMidDecision(opt)}
                         scaleTo={0.98}
                         style={{
-                          borderRadius: 15,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
+                          borderRadius: 14,
+                          paddingHorizontal: 11,
+                          paddingVertical: isPhoneLandscape ? 7 : 9,
                           backgroundColor: bgColor,
                           borderWidth: 2,
                           borderColor,
@@ -1453,6 +1457,8 @@ export default function InteractiveChapterPlayerScreen() {
                 {hasMidDecision && !midDecisionSolved
                   ? sceneViewMode === "STORY"
                     ? "⚡ Ara Karar Sorusunu Cevapla"
+                    : isSmallPhone
+                    ? "Doğru Şıkkı Seç"
                     : "Devam İçin Doğru Şıkkı Seç"
                   : sceneIndex < totalScenes - 1
                   ? `Sonraki Sayfa (${sceneIndex + 2}/${totalScenes})`
@@ -1545,9 +1551,11 @@ export default function InteractiveChapterPlayerScreen() {
       {/* Scrollable Center Choices */}
       <ScrollView
         ref={cardScrollRef}
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginBottom: 4 }}
         contentContainerStyle={{
-          paddingVertical: 10,
+          paddingTop: 10,
+          paddingBottom: 20,
+          paddingRight: isTablet ? 8 : 11,
           flexGrow: 1,
           justifyContent: "center",
         }}
@@ -1829,9 +1837,11 @@ export default function InteractiveChapterPlayerScreen() {
       {/* Scrollable Explanation + Quote */}
       <ScrollView
         ref={cardScrollRef}
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginBottom: 4 }}
         contentContainerStyle={{
-          paddingVertical: 10,
+          paddingTop: 10,
+          paddingBottom: 20,
+          paddingRight: isTablet ? 8 : 11,
           flexGrow: 1,
           justifyContent: "center",
         }}
@@ -2200,12 +2210,12 @@ export default function InteractiveChapterPlayerScreen() {
                 {
                   width: "100%",
                   maxWidth: 540,
-                  maxHeight: "92%",
+                  maxHeight: isPhoneLandscape ? "96%" : "92%",
                   backgroundColor: "#FFFDF7",
-                  borderRadius: 24,
+                  borderRadius: isPhoneLandscape ? 18 : 24,
                   borderWidth: 2.5,
                   borderColor: "#F59E0B",
-                  borderBottomWidth: 5,
+                  borderBottomWidth: isPhoneLandscape ? 4 : 5,
                   borderBottomColor: "#B45309",
                   overflow: "hidden",
                 },
@@ -2215,7 +2225,7 @@ export default function InteractiveChapterPlayerScreen() {
             >
               <ScrollView
                 contentContainerStyle={{
-                  padding: isTablet ? 26 : 18,
+                  padding: isTablet ? 26 : isPhoneLandscape ? 14 : 18,
                   alignItems: "center",
                 }}
                 showsVerticalScrollIndicator={false}
@@ -2236,8 +2246,8 @@ export default function InteractiveChapterPlayerScreen() {
 
                 <View
                   style={{
-                    width: isPhoneLandscape ? 96 : 128,
-                    height: isPhoneLandscape ? 96 : 128,
+                    width: isPhoneLandscape ? 78 : 118,
+                    height: isPhoneLandscape ? 78 : 118,
                     borderRadius: 22,
                     overflow: "hidden",
                     borderWidth: 3,

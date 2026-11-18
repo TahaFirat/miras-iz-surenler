@@ -195,18 +195,17 @@ export default function HomeDiscoveryScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 8,
-                marginBottom: isPhoneLandscape ? 10 : 12,
+                gap: isSmallPhone ? 6 : 8,
+                marginBottom: isPhoneLandscape ? 8 : 11,
               }}
             >
-              <View style={{ flex: 1, minWidth: 180 }}>
+              <View style={{ flex: 1, minWidth: 120 }}>
                 <Text
                   style={{
                     color: "#D97706",
-                    fontSize: 10.5,
+                    fontSize: isSmallPhone ? 9.5 : 10.5,
                     fontWeight: "900",
-                    letterSpacing: 0.9,
+                    letterSpacing: isSmallPhone ? 0.4 : 0.9,
                   }}
                   numberOfLines={1}
                 >
@@ -216,12 +215,12 @@ export default function HomeDiscoveryScreen() {
                   style={{
                     color: "#1C1917",
                     fontSize: isPhoneLandscape
-                      ? 20
+                      ? 19
                       : isTablet
                       ? 26
                       : isSmallPhone
-                      ? 20
-                      : 23,
+                      ? 18
+                      : 22,
                     fontWeight: "900",
                   }}
                   numberOfLines={1}
@@ -235,28 +234,29 @@ export default function HomeDiscoveryScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 6,
+                  gap: isSmallPhone ? 4 : 6,
+                  flexShrink: 0,
                 }}
               >
                 <View
                   style={{
                     backgroundColor: "#F59E0B",
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 12,
+                    paddingHorizontal: isSmallPhone ? 7 : 10,
+                    paddingVertical: isSmallPhone ? 5 : 6,
+                    borderRadius: 11,
                     borderBottomWidth: 3,
                     borderBottomColor: "#B45309",
                     flexDirection: "row",
                     alignItems: "center",
                   }}
                 >
-                  <Award size={13} color="#1C1917" />
+                  <Award size={isSmallPhone ? 11.5 : 13} color="#1C1917" />
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 12,
+                      fontSize: isSmallPhone ? 11 : 12,
                       fontWeight: "900",
-                      marginLeft: 4,
+                      marginLeft: 3,
                     }}
                   >
                     {totalPoints}
@@ -266,9 +266,9 @@ export default function HomeDiscoveryScreen() {
                 <View
                   style={{
                     backgroundColor: "#10B981",
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 12,
+                    paddingHorizontal: isSmallPhone ? 7 : 10,
+                    paddingVertical: isSmallPhone ? 5 : 6,
+                    borderRadius: 11,
                     borderBottomWidth: 3,
                     borderBottomColor: "#047857",
                   }}
@@ -276,7 +276,7 @@ export default function HomeDiscoveryScreen() {
                   <Text
                     style={{
                       color: "#FFFFFF",
-                      fontSize: 12,
+                      fontSize: isSmallPhone ? 11 : 12,
                       fontWeight: "900",
                     }}
                   >
@@ -292,9 +292,9 @@ export default function HomeDiscoveryScreen() {
                   scaleTo={0.96}
                   style={{
                     backgroundColor: "#FFFDF7",
-                    borderRadius: 12,
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
+                    borderRadius: 11,
+                    paddingHorizontal: isSmallPhone ? 7 : 10,
+                    paddingVertical: isSmallPhone ? 5 : 6,
                     borderWidth: 1.5,
                     borderColor: "#E6DEC8",
                     borderBottomWidth: 3,
@@ -303,16 +303,16 @@ export default function HomeDiscoveryScreen() {
                     alignItems: "center",
                   }}
                 >
-                  <Shield size={14} color="#F43F5E" />
+                  <Shield size={isSmallPhone ? 12 : 14} color="#F43F5E" />
                   <Text
                     style={{
                       color: "#1C1917",
-                      fontSize: 12,
+                      fontSize: isSmallPhone ? 11 : 12,
                       fontWeight: "900",
-                      marginLeft: 4,
+                      marginLeft: 3,
                     }}
                   >
-                    Aile Rehberi
+                    {isSmallPhone ? "Aile" : "Aile Rehberi"}
                   </Text>
                 </BouncyPressable>
               </View>
@@ -488,7 +488,7 @@ export default function HomeDiscoveryScreen() {
                 borderRadius: 16,
                 padding: 4,
                 gap: 6,
-                marginBottom: isPhoneLandscape ? 10 : 12,
+                marginBottom: isPhoneLandscape ? 8 : 12,
                 borderWidth: 1.5,
                 borderColor: "#E0D6BF",
               }}
@@ -501,8 +501,8 @@ export default function HomeDiscoveryScreen() {
                 scaleTo={0.98}
                 style={{
                   flex: 1,
-                  paddingVertical: isPhoneLandscape ? 7 : 9,
-                  paddingHorizontal: 10,
+                  paddingVertical: isPhoneLandscape ? 6 : 9,
+                  paddingHorizontal: isSmallPhone ? 6 : 10,
                   borderRadius: 12,
                   backgroundColor:
                     activeTab === "HEROES" ? "#10B981" : "transparent",
@@ -515,15 +515,15 @@ export default function HomeDiscoveryScreen() {
                 }}
               >
                 <LayoutGrid
-                  size={15}
+                  size={isSmallPhone ? 13.5 : 15}
                   color={activeTab === "HEROES" ? "#FFFFFF" : "#57534E"}
                 />
                 <Text
                   style={{
                     color: activeTab === "HEROES" ? "#FFFFFF" : "#44403C",
-                    fontSize: isPhoneLandscape ? 12.5 : 13,
+                    fontSize: isSmallPhone ? 12 : isPhoneLandscape ? 12.5 : 13,
                     fontWeight: "900",
-                    marginLeft: 6,
+                    marginLeft: 5,
                   }}
                   numberOfLines={1}
                 >
@@ -539,8 +539,8 @@ export default function HomeDiscoveryScreen() {
                 scaleTo={0.98}
                 style={{
                   flex: 1,
-                  paddingVertical: isPhoneLandscape ? 7 : 9,
-                  paddingHorizontal: 10,
+                  paddingVertical: isPhoneLandscape ? 6 : 9,
+                  paddingHorizontal: isSmallPhone ? 6 : 10,
                   borderRadius: 12,
                   backgroundColor:
                     activeTab === "ATLAS" ? "#F59E0B" : "transparent",
@@ -553,19 +553,19 @@ export default function HomeDiscoveryScreen() {
                 }}
               >
                 <Globe
-                  size={15}
+                  size={isSmallPhone ? 13.5 : 15}
                   color={activeTab === "ATLAS" ? "#1C1917" : "#0D9488"}
                 />
                 <Text
                   style={{
                     color: activeTab === "ATLAS" ? "#1C1917" : "#44403C",
-                    fontSize: isPhoneLandscape ? 12.5 : 13,
+                    fontSize: isSmallPhone ? 12 : isPhoneLandscape ? 12.5 : 13,
                     fontWeight: "900",
-                    marginLeft: 6,
+                    marginLeft: 5,
                   }}
                   numberOfLines={1}
                 >
-                  Dünya Atlası & Tarih
+                  {isSmallPhone ? "Dünya Atlası" : "Dünya Atlası & Tarih"}
                 </Text>
               </BouncyPressable>
             </View>
@@ -585,8 +585,17 @@ export default function HomeDiscoveryScreen() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  style={{ width: "100%", marginBottom: isPhoneLandscape ? 10 : 14 }}
-                  contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+                  style={{
+                    width: "100%",
+                    flexGrow: 0,
+                    flexShrink: 0,
+                    marginBottom: isPhoneLandscape ? 8 : 14,
+                  }}
+                  contentContainerStyle={{
+                    gap: 8,
+                    paddingRight: 8,
+                    alignItems: "center",
+                  }}
                 >
                   <BouncyPressable
                     onPress={() => {

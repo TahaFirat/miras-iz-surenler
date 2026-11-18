@@ -443,6 +443,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
   const [selectedHeroId, setSelectedHeroId] = useState<string>(
     "fatih-sultan-mehmed"
   );
+  const [atlasSubTab, setAtlasSubTab] = useState<"MAP" | "TIMELINE">("MAP");
   const [chapterModalHero, setChapterModalHero] = useState<HeroProfile | null>(
     null
   );
@@ -494,96 +495,129 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
   const medallionSize = isTablet ? 44 : isPhoneLandscape ? 32 : isSmallPhone ? 28 : 31;
   const halfMedallion = medallionSize / 2;
   const mapHeight = isPhoneLandscape
-    ? Math.max(200, Math.min(245, windowHeight * 0.56))
+    ? Math.max(176, Math.min(205, windowHeight * 0.49))
     : isTablet
     ? isLandscape
       ? 360
       : 380
-    : 225;
+    : isSmallPhone
+    ? 200
+    : 220;
 
   return (
     <View style={{ width: "100%", overflow: "hidden" }}>
+      {/* Clean Atlas / Timeline Sub-Switcher so Timeline is immediately accessible without buried scrolling! */}
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: "#FAF8F5",
+          borderRadius: 13,
+          padding: 3,
+          gap: 6,
+          marginBottom: isPhoneLandscape ? 8 : 10,
+          borderWidth: 1.5,
+          borderColor: "#E6DEC8",
+        }}
+      >
+        <BouncyPressable
+          onPress={() => {
+            triggerHaptic();
+            setAtlasSubTab("MAP");
+          }}
+          scaleTo={0.98}
+          style={{
+            flex: 1,
+            paddingVertical: isPhoneLandscape ? 5 : 7,
+            paddingHorizontal: 8,
+            borderRadius: 10,
+            backgroundColor: atlasSubTab === "MAP" ? "#0D9488" : "transparent",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Compass
+            size={14}
+            color={atlasSubTab === "MAP" ? "#FFFFFF" : "#0D9488"}
+          />
+          <Text
+            style={{
+              color: atlasSubTab === "MAP" ? "#FFFFFF" : "#44403C",
+              fontSize: isSmallPhone ? 11.5 : isPhoneLandscape ? 11.5 : 12.5,
+              fontWeight: "900",
+              marginLeft: 5,
+            }}
+            numberOfLines={1}
+          >
+            {isSmallPhone
+              ? `Harita (${ATLAS_CITY_NODES.length})`
+              : `Medeniyet Haritası (${ATLAS_CITY_NODES.length})`}
+          </Text>
+        </BouncyPressable>
+
+        <BouncyPressable
+          onPress={() => {
+            triggerHaptic();
+            setAtlasSubTab("TIMELINE");
+          }}
+          scaleTo={0.98}
+          style={{
+            flex: 1,
+            paddingVertical: isPhoneLandscape ? 5 : 7,
+            paddingHorizontal: 8,
+            borderRadius: 10,
+            backgroundColor:
+              atlasSubTab === "TIMELINE" ? "#F59E0B" : "transparent",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Clock
+            size={14}
+            color={atlasSubTab === "TIMELINE" ? "#1C1917" : "#D97706"}
+          />
+          <Text
+            style={{
+              color: atlasSubTab === "TIMELINE" ? "#1C1917" : "#44403C",
+              fontSize: isSmallPhone ? 11.5 : isPhoneLandscape ? 11.5 : 12.5,
+              fontWeight: "900",
+              marginLeft: 5,
+            }}
+            numberOfLines={1}
+          >
+            {isSmallPhone ? "Zaman Şeridi" : "Zaman Şeridi (7.–20. yy)"}
+          </Text>
+        </BouncyPressable>
+      </View>
+
       {/* ==================================================================== */}
       {/* 1. RESPONSIVE WORLD ATLAS CARD (Zero Horizontal Overflow)            */}
       {/* ==================================================================== */}
+      {atlasSubTab === "MAP" && (
       <View
         style={{
           width: "100%",
           backgroundColor: "#FFFFFF",
-          borderRadius: isTablet ? 24 : 20,
-          padding: isTablet ? 18 : 12,
-          marginBottom: 16,
+          borderRadius: isTablet ? 24 : 18,
+          padding: isTablet ? 16 : isPhoneLandscape ? 10 : 11,
+          marginBottom: isPhoneLandscape ? 8 : 14,
           borderWidth: 1.5,
           borderColor: "#E7E5E4",
           overflow: "hidden",
         }}
       >
-        {/* Clean Header Row */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <View
-              style={{
-                width: isTablet ? 38 : 32,
-                height: isTablet ? 38 : 32,
-                borderRadius: 10,
-                backgroundColor: "#FEF3C7",
-                borderWidth: 1.5,
-                borderColor: "#F59E0B",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 10,
-              }}
-            >
-              <Compass size={isTablet ? 20 : 17} color="#B45309" />
-            </View>
-            <Text
-              style={{
-                color: "#1C1917",
-                fontSize: isTablet ? 20 : 16.5,
-                fontWeight: "900",
-                flexShrink: 1,
-              }}
-              numberOfLines={1}
-            >
-              Medeniyet Haritası
-            </Text>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: "#FFFBEB",
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderWidth: 1,
-              borderColor: "#FDE68A",
-            }}
-          >
-            <Text
-              style={{
-                color: "#B45309",
-                fontSize: 11.5,
-                fontWeight: "800",
-              }}
-            >
-              {ATLAS_CITY_NODES.length} Şehir
-            </Text>
-          </View>
-        </View>
-
         {/* Quick Horizontal City Selector Bar (Super easy on Mobile & Tablet) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ width: "100%", marginBottom: 10 }}
-          contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+          style={{
+            width: "100%",
+            flexGrow: 0,
+            flexShrink: 0,
+            marginBottom: isPhoneLandscape ? 8 : 10,
+          }}
+          contentContainerStyle={{ gap: 6, paddingRight: 8, alignItems: "center" }}
         >
           {ATLAS_CITY_NODES.map((city) => {
             const isSelected = city.id === selectedCity.id;
@@ -747,12 +781,11 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                       </View>
                     )}
 
-                    {(isTablet || isSelected) && (
-                      <View
+                    <View
                         style={{
                           marginTop: 2,
-                          paddingHorizontal: isSelected ? 8 : 6,
-                          paddingVertical: 2,
+                          paddingHorizontal: isSelected ? 8 : 5,
+                          paddingVertical: isSelected ? 2 : 1,
                           borderRadius: 999,
                           backgroundColor: isSelected
                             ? "#0D9488"
@@ -768,7 +801,9 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                               ? isTablet
                                 ? 11
                                 : 10
-                              : 9.5,
+                              : isTablet
+                              ? 9.5
+                              : 8,
                             fontWeight: "900",
                           }}
                           numberOfLines={1}
@@ -776,7 +811,6 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                           {city.shortName}
                         </Text>
                       </View>
-                    )}
                   </BouncyPressable>
                 </View>
               );
@@ -787,10 +821,11 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
           <View
             style={{
               flex: isLandscape ? 1 : undefined,
+              height: isLandscape ? mapHeight : undefined,
               width: isLandscape ? undefined : "100%",
               backgroundColor: "#FAF8F5",
               borderRadius: 16,
-              padding: isTablet ? 14 : 11,
+              padding: isTablet ? 14 : isPhoneLandscape ? 10 : 11,
               borderWidth: 1.5,
               borderColor: "#E7E5E4",
             }}
@@ -800,17 +835,17 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: cityHeroes.length > 1 ? 8 : 10,
+              marginBottom: cityHeroes.length > 1 ? 6 : 8,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-              <MapPin size={16} color="#0D9488" />
+              <MapPin size={15} color="#0D9488" />
               <Text
                 style={{
                   color: "#1C1917",
-                  fontSize: isTablet ? 16.5 : 15,
+                  fontSize: isTablet ? 16.5 : 14.5,
                   fontWeight: "900",
-                  marginLeft: 6,
+                  marginLeft: 5,
                   flexShrink: 1,
                 }}
                 numberOfLines={1}
@@ -821,7 +856,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
             <Text
               style={{
                 color: "#B45309",
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: "800",
               }}
             >
@@ -834,7 +869,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ width: "100%", flexGrow: 0, flexShrink: 0, marginBottom: 10 }}
+              style={{ width: "100%", flexGrow: 0, flexShrink: 0, marginBottom: 8 }}
               contentContainerStyle={{ gap: 6, alignItems: "center" }}
             >
               {cityHeroes.map((h) => {
@@ -848,8 +883,8 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     }}
                     scaleTo={0.97}
                     style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
+                      paddingHorizontal: 11,
+                      paddingVertical: isPhoneLandscape ? 5 : 6,
                       borderRadius: 999,
                       backgroundColor: isHeroActive ? "#0D9488" : "#FFFFFF",
                       borderWidth: 1.5,
@@ -859,7 +894,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     <Text
                       style={{
                         color: isHeroActive ? "#FFFFFF" : "#1C1917",
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: "800",
                       }}
                     >
@@ -872,7 +907,11 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
           )}
 
           {/* Active Hero Chapters List */}
-          <View style={{ gap: 8 }}>
+          <ScrollView
+            style={isLandscape ? { flex: 1 } : undefined}
+            contentContainerStyle={{ gap: 6, paddingBottom: 2 }}
+            showsVerticalScrollIndicator={false}
+          >
             {activeHero.chapters.map((chapter) => {
               const isDone = completedChapters.includes(chapter.id);
               return (
@@ -883,8 +922,8 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                   style={{
                     backgroundColor: isDone ? "#F0FDFA" : "#FFFFFF",
                     borderRadius: 12,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
+                    paddingHorizontal: 11,
+                    paddingVertical: isPhoneLandscape ? 8 : 9,
                     borderWidth: 1.5,
                     borderColor: isDone ? "#5EEAD4" : "#E7E5E4",
                     flexDirection: "row",
@@ -901,11 +940,11 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     }}
                   >
                     {isDone ? (
-                      <CheckCircle2 size={17} color="#0D9488" />
+                      <CheckCircle2 size={16} color="#0D9488" />
                     ) : (
-                      <BookOpen size={17} color="#D97706" />
+                      <BookOpen size={16} color="#D97706" />
                     )}
-                    <View style={{ marginLeft: 8, flex: 1 }}>
+                    <View style={{ marginLeft: 7, flex: 1 }}>
                       <Text
                         style={{
                           color: "#1C1917",
@@ -922,7 +961,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     style={{
                       backgroundColor: "#0D9488",
                       paddingHorizontal: 10,
-                      paddingVertical: 5,
+                      paddingVertical: 4,
                       borderRadius: 8,
                       flexDirection: "row",
                       alignItems: "center",
@@ -943,20 +982,22 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                 </BouncyPressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
         </View>
       </View>
+      )}
 
       {/* ==================================================================== */}
       {/* 2. COMPACT CHRONOLOGICAL TIMELINE                                    */}
       {/* ==================================================================== */}
+      {atlasSubTab === "TIMELINE" && (
       <View
         style={{
           width: "100%",
           backgroundColor: "#FFFFFF",
-          borderRadius: isTablet ? 26 : 20,
-          padding: isTablet ? 18 : 12,
+          borderRadius: isTablet ? 26 : 18,
+          padding: isTablet ? 16 : 11,
           marginBottom: 12,
           borderWidth: 1.5,
           borderColor: "#E7E5E4",
@@ -1002,10 +1043,11 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ width: "100%" }}
+          style={{ width: "100%", flexGrow: 0, flexShrink: 0 }}
           contentContainerStyle={{
             paddingVertical: 4,
             gap: 10,
+            alignItems: "stretch",
           }}
         >
           {TIMELINE_ERAS.map((era) => {
@@ -1024,7 +1066,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               <View
                 key={era.id}
                 style={{
-                  width: isTablet ? 210 : 176,
+                  width: isTablet ? 210 : isPhoneLandscape ? 168 : 176,
                   borderRadius: 18,
                   backgroundColor: "#FFFFFF",
                   borderWidth: 2,
@@ -1037,7 +1079,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                   onPress={() => handleOpenHeroChapters(hero.id, era.cityId)}
                   style={{
                     width: "100%",
-                    height: isTablet ? 115 : 98,
+                    height: isTablet ? 115 : isPhoneLandscape ? 78 : 98,
                     backgroundColor: "#1C1917",
                     position: "relative",
                   }}
@@ -1075,7 +1117,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
 
                 <View
                   style={{
-                    padding: 10,
+                    padding: isPhoneLandscape ? 8 : 10,
                     flex: 1,
                     justifyContent: "space-between",
                   }}
@@ -1097,7 +1139,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                         fontSize: 11,
                         fontWeight: "800",
                         marginTop: 2,
-                        marginBottom: 8,
+                        marginBottom: isPhoneLandscape ? 6 : 8,
                       }}
                     >
                       {completedHeroChapters}/{hero.chapters.length} Bölüm
@@ -1110,7 +1152,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     style={{
                       backgroundColor: "#0D9488",
                       borderRadius: 10,
-                      paddingVertical: 8,
+                      paddingVertical: isPhoneLandscape ? 6 : 8,
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1134,6 +1176,7 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
           })}
         </ScrollView>
       </View>
+      )}
 
       {/* ==================================================================== */}
       {/* 3. HERO CHAPTERS QUICK LAUNCH MODAL                                  */}

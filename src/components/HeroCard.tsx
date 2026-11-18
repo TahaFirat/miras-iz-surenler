@@ -141,13 +141,13 @@ export const HeroCard: React.FC<HeroCardProps> = ({
   };
 
   const categoryTheme = getCategoryTheme();
-  const minCardHeight = isPhoneLandscape ? 236 : isTablet ? 298 : 264;
+  const minCardHeight = isPhoneLandscape ? 212 : isTablet ? 290 : 254;
 
   return (
     <View
       style={{
         width: (cardWidth ?? (isTablet || isPhoneLandscape ? "48.8%" : "100%")) as any,
-        marginBottom: isTablet ? 16 : isPhoneLandscape ? 12 : 14,
+        marginBottom: isTablet ? 16 : isPhoneLandscape ? 11 : 13,
       }}
     >
       <View
@@ -170,13 +170,13 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         )}
 
         <LinearGradient
-          colors={["rgba(15, 23, 42, 0.62)", "transparent"]}
+          colors={["rgba(15, 23, 42, 0.56)", "transparent"]}
           style={{
             position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            height: 68,
+            height: 60,
           }}
         />
 
@@ -184,15 +184,15 @@ export const HeroCard: React.FC<HeroCardProps> = ({
           colors={[
             "transparent",
             "rgba(20, 18, 52, 0.72)",
-            "rgba(24, 21, 19, 0.97)",
+            "rgba(24, 21, 19, 0.96)",
           ]}
-          locations={[0, 0.36, 1]}
+          locations={[0, 0.4, 1]}
           style={{
             position: "absolute",
             left: 0,
             right: 0,
             bottom: 0,
-            height: "78%",
+            height: "68%",
           }}
         />
 
@@ -200,8 +200,8 @@ export const HeroCard: React.FC<HeroCardProps> = ({
           style={{
             flex: 1,
             justifyContent: "space-between",
-            padding: isPhoneLandscape ? 12 : isTablet ? 15 : 13,
-            gap: isPhoneLandscape ? 26 : 40,
+            padding: isPhoneLandscape ? 11 : isTablet ? 15 : 13,
+            gap: isPhoneLandscape ? 18 : 34,
           }}
         >
           {/* Top Row: Category Pill + Chapter Progress Pill */}
@@ -301,7 +301,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={{ marginBottom: 8 }}
+                style={{ marginBottom: 8, flexGrow: 0, flexShrink: 0 }}
                 contentContainerStyle={{ gap: 6, alignItems: "center" }}
               >
                 {hero.chapters.map((ch, idx) => {

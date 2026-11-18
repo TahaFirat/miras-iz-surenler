@@ -60,6 +60,7 @@ export default function ApprenticeProfileScreen() {
   const {
     isTablet,
     isPhoneLandscape,
+    isSmallPhone,
     insets,
     horizontalPadding,
   } = useResponsiveLayout();
@@ -267,125 +268,150 @@ export default function ApprenticeProfileScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
-                    borderRadius: 24,
-                    padding: isTablet ? 20 : 16,
+                    borderRadius: isPhoneLandscape ? 18 : 24,
+                    padding: isTablet ? 20 : isPhoneLandscape ? 12 : 16,
                     borderWidth: 2,
                     borderColor: "#F59E0B",
-                    marginBottom: 14,
+                    marginBottom: isPhoneLandscape ? 10 : 14,
                     alignItems: "center",
                   }}
                 >
                   <View
                     style={{
-                      width: isPhoneLandscape ? 88 : 112,
-                      height: isPhoneLandscape ? 88 : 112,
-                      borderRadius: 56,
-                      padding: 3.5,
-                      backgroundColor: "#F59E0B",
-                      shadowColor: "#F59E0B",
-                      shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.35,
-                      shadowRadius: 12,
-                      elevation: 8,
-                      marginBottom: 10,
+                      flexDirection: isPhoneLandscape ? "row" : "column",
+                      alignItems: "center",
+                      width: "100%",
+                      gap: isPhoneLandscape ? 12 : 0,
+                      marginBottom: isPhoneLandscape ? 8 : 0,
                     }}
                   >
                     <View
                       style={{
-                        flex: 1,
-                        borderRadius: 52,
-                        overflow: "hidden",
-                        backgroundColor: "#0F172A",
-                        borderWidth: 2,
-                        borderColor: "#FEF3C7",
+                        width: isPhoneLandscape ? 68 : 108,
+                        height: isPhoneLandscape ? 68 : 108,
+                        borderRadius: 56,
+                        padding: 3,
+                        backgroundColor: "#F59E0B",
+                        shadowColor: "#F59E0B",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 12,
+                        elevation: 8,
+                        marginBottom: isPhoneLandscape ? 0 : 10,
+                        flexShrink: 0,
                       }}
                     >
-                      {activeCrestSource && (
-                        <Image
-                          source={activeCrestSource}
-                          style={{ width: "100%", height: "100%" }}
-                          resizeMode="cover"
-                        />
-                      )}
+                      <View
+                        style={{
+                          flex: 1,
+                          borderRadius: 52,
+                          overflow: "hidden",
+                          backgroundColor: "#0F172A",
+                          borderWidth: 2,
+                          borderColor: "#FEF3C7",
+                        }}
+                      >
+                        {activeCrestSource && (
+                          <Image
+                            source={activeCrestSource}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        )}
+                      </View>
                     </View>
-                  </View>
 
-                  <Text
-                    style={{
-                      color: "#FBBF24",
-                      fontSize: 10.5,
-                      fontWeight: "800",
-                      letterSpacing: 0.8,
-                      textTransform: "uppercase",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {activeSymbol.label}
-                  </Text>
-
-                  {/* Editable Apprentice Name */}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      borderRadius: 14,
-                      paddingHorizontal: 12,
-                      paddingVertical: 5,
-                      marginBottom: 10,
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      borderWidth: 1,
-                      borderColor: "rgba(251,191,36,0.35)",
-                      maxWidth: 250,
-                    }}
-                  >
-                    <TextInput
-                      value={nameInput}
-                      onChangeText={(val) => {
-                        setNameInput(val);
-                        setApprenticeName(val);
-                      }}
-                      maxLength={24}
-                      returnKeyType="done"
-                      placeholder="Adını yaz..."
-                      placeholderTextColor="#94A3B8"
+                    <View
                       style={{
-                        color: "#FFFBEB",
-                        fontSize: 16.5,
-                        fontWeight: "900",
-                        textAlign: "center",
-                        paddingVertical: 2,
-                        minWidth: 120,
-                        flexShrink: 1,
-                      }}
-                    />
-                    <PenLine size={14} color="#FBBF24" style={{ marginLeft: 6 }} />
-                  </View>
-
-                  {/* Equipped Title Ribbon */}
-                  <View
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 10,
-                      backgroundColor: "#F59E0B",
-                      borderBottomWidth: 3,
-                      borderBottomColor: "#B45309",
-                    }}
-                  >
-                    <Crown size={13} color="#1C1917" />
-                    <Text
-                      style={{
-                        color: "#1C1917",
-                        fontSize: 12,
-                        fontWeight: "900",
-                        marginLeft: 5,
+                        flex: isPhoneLandscape ? 1 : undefined,
+                        alignItems: isPhoneLandscape ? "flex-start" : "center",
+                        width: isPhoneLandscape ? undefined : "100%",
                       }}
                     >
-                      {selectedTitle}
-                    </Text>
+                      <Text
+                        style={{
+                          color: "#FBBF24",
+                          fontSize: 10,
+                          fontWeight: "800",
+                          letterSpacing: 0.7,
+                          textTransform: "uppercase",
+                          marginBottom: 4,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {activeSymbol.label}
+                      </Text>
+
+                      {/* Editable Apprentice Name */}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          borderRadius: 12,
+                          paddingHorizontal: 10,
+                          paddingVertical: isPhoneLandscape ? 3 : 5,
+                          marginBottom: isPhoneLandscape ? 6 : 10,
+                          backgroundColor: "rgba(255,255,255,0.08)",
+                          borderWidth: 1,
+                          borderColor: "rgba(251,191,36,0.35)",
+                          maxWidth: 250,
+                          width: isPhoneLandscape ? "100%" : undefined,
+                        }}
+                      >
+                        <TextInput
+                          value={nameInput}
+                          onChangeText={(val) => {
+                            setNameInput(val);
+                            setApprenticeName(val);
+                          }}
+                          maxLength={24}
+                          returnKeyType="done"
+                          placeholder="Adını yaz..."
+                          placeholderTextColor="#94A3B8"
+                          style={{
+                            color: "#FFFBEB",
+                            fontSize: isPhoneLandscape ? 14.5 : 16.5,
+                            fontWeight: "900",
+                            textAlign: isPhoneLandscape ? "left" : "center",
+                            paddingVertical: 2,
+                            minWidth: 100,
+                            flex: isPhoneLandscape ? 1 : undefined,
+                            flexShrink: 1,
+                          }}
+                        />
+                        <PenLine size={13} color="#FBBF24" style={{ marginLeft: 6 }} />
+                      </View>
+
+                      {/* Equipped Title Ribbon */}
+                      <View
+                        style={{
+                          paddingHorizontal: 11,
+                          paddingVertical: 4,
+                          borderRadius: 999,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: isPhoneLandscape ? 0 : 10,
+                          backgroundColor: "#F59E0B",
+                          borderBottomWidth: 3,
+                          borderBottomColor: "#B45309",
+                          maxWidth: "100%",
+                        }}
+                      >
+                        <Crown size={12} color="#1C1917" />
+                        <Text
+                          style={{
+                            color: "#1C1917",
+                            fontSize: isPhoneLandscape ? 11 : 12,
+                            fontWeight: "900",
+                            marginLeft: 4,
+                            flexShrink: 1,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {selectedTitle}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
 
                   {/* Motto Banner Strip */}
@@ -462,10 +488,10 @@ export default function ApprenticeProfileScreen() {
                     <View
                       key={stat.label}
                       style={{
-                        width: "48.2%",
+                        width: "48.4%",
                         backgroundColor: "#FFFDF7",
-                        borderRadius: 16,
-                        padding: 11,
+                        borderRadius: 14,
+                        padding: isPhoneLandscape || isSmallPhone ? 9 : 11,
                         borderWidth: 1.5,
                         borderColor: "#E6DEC8",
                       }}
@@ -476,14 +502,15 @@ export default function ApprenticeProfileScreen() {
                           alignItems: "center",
                           justifyContent: "space-between",
                           marginBottom: 3,
+                          gap: 4,
                         }}
                       >
                         <Text
                           style={{
                             color: "#78716C",
-                            fontSize: 11,
+                            fontSize: isPhoneLandscape || isSmallPhone ? 10 : 11,
                             fontWeight: "800",
-                            flexShrink: 1,
+                            flex: 1,
                           }}
                           numberOfLines={1}
                         >
@@ -491,12 +518,13 @@ export default function ApprenticeProfileScreen() {
                         </Text>
                         <View
                           style={{
-                            width: 24,
-                            height: 24,
+                            width: isPhoneLandscape ? 20 : 24,
+                            height: isPhoneLandscape ? 20 : 24,
                             borderRadius: 7,
                             backgroundColor: stat.bg,
                             alignItems: "center",
                             justifyContent: "center",
+                            flexShrink: 0,
                           }}
                         >
                           {stat.icon}
@@ -505,7 +533,7 @@ export default function ApprenticeProfileScreen() {
                       <Text
                         style={{
                           color: stat.color,
-                          fontSize: 17,
+                          fontSize: isPhoneLandscape ? 15 : 17,
                           fontWeight: "900",
                         }}
                       >
