@@ -352,76 +352,89 @@ export default function MirasMuseumScreen() {
           {artifact.historicalNote || artifact.shortDescription}
         </Text>
       </View>
-
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <BouncyPressable
-          onPress={() => {
-            const targetChapterId = artifact.chapterId;
-            setSelectedArtifact(null);
-            router.push(`/chapter/${targetChapterId}`);
-          }}
-          scaleTo={0.97}
-          style={{
-            flex: 1,
-            borderRadius: 14,
-            paddingVertical: 11,
-            paddingHorizontal: 12,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#F59E0B",
-            borderWidth: 1,
-            borderColor: "#FDE68A",
-            borderBottomWidth: 3.5,
-            borderBottomColor: "#B45309",
-          }}
-        >
-          <Compass size={16} color="#1C1917" />
-          <Text
-            style={{
-              color: "#1C1917",
-              fontSize: 13,
-              fontWeight: "900",
-              marginLeft: 5,
-            }}
-            numberOfLines={1}
-          >
-            Bölüme Git
-          </Text>
-        </BouncyPressable>
-
-        <BouncyPressable
-          onPress={() => setSelectedArtifact(null)}
-          scaleTo={0.97}
-          style={{
-            flex: 1,
-            borderRadius: 14,
-            paddingVertical: 11,
-            paddingHorizontal: 14,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#10B981",
-            borderWidth: 1,
-            borderColor: "#6EE7B7",
-            borderBottomWidth: 3.5,
-            borderBottomColor: "#047857",
-          }}
-        >
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 13.5,
-              fontWeight: "900",
-            }}
-          >
-            Müzeye Dön
-          </Text>
-        </BouncyPressable>
-      </View>
     </>
   );
 
-  // Interactive Artifact Image + Clamped Circular Hotspot Pins
+  // Pinned Modal Action Footer so "Bölüme Git" & "Müzeye Dön" are ALWAYS visible!
+  const renderInspectorFooter = (artifact: RewardArtifact) => (
+    <View
+      style={{
+        flexDirection: "row",
+        gap: 10,
+        paddingHorizontal: isTablet ? 20 : 14,
+        paddingVertical: isPhoneLandscape ? 9 : 12,
+        backgroundColor: "#FDF8EC",
+        borderTopWidth: 1.5,
+        borderTopColor: "#E6DEC8",
+      }}
+    >
+      <BouncyPressable
+        onPress={() => {
+          const targetChapterId = artifact.chapterId;
+          setSelectedArtifact(null);
+          router.push(`/chapter/${targetChapterId}`);
+        }}
+        scaleTo={0.97}
+        style={{
+          flex: 1,
+          borderRadius: 13,
+          paddingVertical: isPhoneLandscape ? 9 : 11,
+          paddingHorizontal: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#F59E0B",
+          borderWidth: 1,
+          borderColor: "#FDE68A",
+          borderBottomWidth: 3.5,
+          borderBottomColor: "#B45309",
+        }}
+      >
+        <Compass size={16} color="#1C1917" />
+        <Text
+          style={{
+            color: "#1C1917",
+            fontSize: 13,
+            fontWeight: "900",
+            marginLeft: 5,
+          }}
+          numberOfLines={1}
+        >
+          Bölüme Git
+        </Text>
+      </BouncyPressable>
+
+      <BouncyPressable
+        onPress={() => setSelectedArtifact(null)}
+        scaleTo={0.97}
+        style={{
+          flex: 1,
+          borderRadius: 13,
+          paddingVertical: isPhoneLandscape ? 9 : 11,
+          paddingHorizontal: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#10B981",
+          borderWidth: 1,
+          borderColor: "#6EE7B7",
+          borderBottomWidth: 3.5,
+          borderBottomColor: "#047857",
+        }}
+      >
+        <Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: 13.5,
+            fontWeight: "900",
+          }}
+        >
+          Müzeye Dön
+        </Text>
+      </BouncyPressable>
+    </View>
+  );
+
+  // Interactive Artifact Image + Clamped Circular Hotspot Pins inside exact square image bounds!
   const renderInspectorStage = (artifact: RewardArtifact, stageHeight: number) => (
     <View
       style={{
@@ -434,77 +447,88 @@ export default function MirasMuseumScreen() {
         backgroundColor: "#1E1B4B",
         borderWidth: 2.5,
         borderColor: "#F59E0B",
-        position: "relative",
+        padding: 8,
       }}
     >
-      {resolveImageAsset(artifact.imagePath) && (
-        <Image
-          source={resolveImageAsset(artifact.imagePath)!}
-          resizeMode="contain"
-          style={{ width: "86%", height: "86%" }}
-        />
-      )}
+      <View
+        style={{
+          height: "100%",
+          aspectRatio: 1,
+          maxWidth: "100%",
+          borderRadius: 14,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {resolveImageAsset(artifact.imagePath) && (
+          <Image
+            source={resolveImageAsset(artifact.imagePath)!}
+            resizeMode="cover"
+            style={{ width: "100%", height: "100%" }}
+          />
+        )}
 
-      {artifact.hotspots.map((hotspot, idx) => {
-        const isSelected = activeHotspot?.id === hotspot.id;
-        const isDiscovered = discoveredHotspots.includes(hotspot.id);
-        const clampedX = Math.max(12, Math.min(88, hotspot.xPercent));
-        const clampedY = Math.max(14, Math.min(86, hotspot.yPercent));
+        {artifact.hotspots.map((hotspot, idx) => {
+          const isSelected = activeHotspot?.id === hotspot.id;
+          const isDiscovered = discoveredHotspots.includes(hotspot.id);
+          const clampedX = Math.max(12, Math.min(88, hotspot.xPercent));
+          const clampedY = Math.max(14, Math.min(86, hotspot.yPercent));
 
-        return (
-          <View
-            key={hotspot.id}
-            style={{
-              position: "absolute",
-              left: `${clampedX}%`,
-              top: `${clampedY}%`,
-              marginLeft: -18,
-              marginTop: -18,
-              zIndex: isSelected ? 20 : 10,
-            }}
-          >
-            <Animated.View style={pulsingPinStyle}>
-              <BouncyPressable
-                onPress={() => handleSelectHotspot(hotspot)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isSelected
-                    ? "#F59E0B"
-                    : isDiscovered
-                    ? "#10B981"
-                    : "#FFFDF7",
-                  borderWidth: 2.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 4,
-                  elevation: 5,
-                }}
-              >
-                <Text
+          return (
+            <View
+              key={hotspot.id}
+              style={{
+                position: "absolute",
+                left: `${clampedX}%`,
+                top: `${clampedY}%`,
+                marginLeft: -17,
+                marginTop: -17,
+                zIndex: isSelected ? 20 : 10,
+              }}
+            >
+              <Animated.View style={pulsingPinStyle}>
+                <BouncyPressable
+                  onPress={() => handleSelectHotspot(hotspot)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={{
-                    color: isSelected
-                      ? "#1C1917"
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: isSelected
+                      ? "#F59E0B"
                       : isDiscovered
-                      ? "#FFFFFF"
-                      : "#1C1917",
-                    fontSize: 13.5,
-                    fontWeight: "900",
+                      ? "#10B981"
+                      : "#FFFDF7",
+                    borderWidth: 2.5,
+                    borderColor: "#FFFFFF",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 4,
+                    elevation: 5,
                   }}
                 >
-                  {idx + 1}
-                </Text>
-              </BouncyPressable>
-            </Animated.View>
-          </View>
-        );
-      })}
+                  <Text
+                    style={{
+                      color: isSelected
+                        ? "#1C1917"
+                        : isDiscovered
+                        ? "#FFFFFF"
+                        : "#1C1917",
+                      fontSize: 13,
+                      fontWeight: "900",
+                    }}
+                  >
+                    {idx + 1}
+                  </Text>
+                </BouncyPressable>
+              </Animated.View>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 
@@ -1151,13 +1175,13 @@ export default function MirasMuseumScreen() {
                       flexDirection: "row",
                       padding: isTablet ? 20 : 14,
                       gap: 16,
-                      maxHeight: isPhoneLandscape ? 290 : 480,
+                      maxHeight: isPhoneLandscape ? 235 : 420,
                     }}
                   >
                     <View style={{ width: "44%" }}>
                       {renderInspectorStage(
                         selectedArtifact,
-                        isPhoneLandscape ? 255 : 320
+                        isPhoneLandscape ? 205 : 320
                       )}
                     </View>
                     <ScrollView
@@ -1170,6 +1194,7 @@ export default function MirasMuseumScreen() {
                 ) : (
                   /* PORTRAIT MODAL: Vertical Stack */
                   <ScrollView
+                    style={{ flexShrink: 1 }}
                     contentContainerStyle={{
                       padding: isTablet ? 22 : 16,
                     }}
@@ -1178,12 +1203,14 @@ export default function MirasMuseumScreen() {
                     <View style={{ marginBottom: 14 }}>
                       {renderInspectorStage(
                         selectedArtifact,
-                        isTablet ? 280 : 230
+                        isTablet ? 270 : 215
                       )}
                     </View>
                     {renderInspectorDetails(selectedArtifact)}
                   </ScrollView>
                 )}
+
+                {renderInspectorFooter(selectedArtifact)}
               </View>
             </View>
           )}

@@ -59,8 +59,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Cebelitarık & Kurtuba",
     shortName: "Endülüs",
     centuryBadge: "8–9. yy",
-    xPercent: 14,
-    yPercent: 22,
+    xPercent: 12,
+    yPercent: 24,
     heroIds: ["tarik-bin-ziyad", "ziryab-itri"],
     medallionImage: "assets/images/tarik_bin_ziyad_gibraltar.png",
   },
@@ -69,8 +69,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Fes & Tanca",
     shortName: "Fes",
     centuryBadge: "9 & 14. yy",
-    xPercent: 20,
-    yPercent: 48,
+    xPercent: 18,
+    yPercent: 52,
     heroIds: ["medeniyet-mimarlari", "ibn-battuta"],
     medallionImage: "assets/images/fatima_fihri_hero.png",
   },
@@ -80,7 +80,7 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     shortName: "Gelibolu",
     centuryBadge: "16. yy",
     xPercent: 34,
-    yPercent: 31,
+    yPercent: 29,
     heroIds: ["piri-reis"],
     medallionImage: "assets/images/piri_reis_map.png",
   },
@@ -90,7 +90,7 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     shortName: "İstanbul",
     centuryBadge: "13–19. yy",
     xPercent: 46,
-    yPercent: 21,
+    yPercent: 17,
     heroIds: [
       "fatih-sultan-mehmed",
       "mimar-sinan",
@@ -110,8 +110,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Kahire (Nil)",
     shortName: "Kahire",
     centuryBadge: "11 & 17. yy",
-    xPercent: 43,
-    yPercent: 58,
+    xPercent: 42,
+    yPercent: 60,
     heroIds: ["ibnul-heysem", "evliya-celebi"],
     medallionImage: "assets/images/ibnul_heysem_hero.png",
   },
@@ -121,7 +121,7 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     shortName: "Kudüs",
     centuryBadge: "7 & 12. yy",
     xPercent: 55,
-    yPercent: 46,
+    yPercent: 47,
     heroIds: ["selahaddin-eyyubi", "hz-omer"],
     medallionImage: "assets/images/selahaddin_hero.png",
   },
@@ -130,8 +130,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Medine & Kûfe",
     shortName: "Medine",
     centuryBadge: "7. yy",
-    xPercent: 62,
-    yPercent: 70,
+    xPercent: 61,
+    yPercent: 72,
     heroIds: ["hz-ebubekir", "hz-omer", "hz-ali"],
     medallionImage: "assets/images/hz_omer_pov.png",
   },
@@ -140,8 +140,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Diyarbakır",
     shortName: "Diyarbakır",
     centuryBadge: "12–13. yy",
-    xPercent: 59,
-    yPercent: 30,
+    xPercent: 60,
+    yPercent: 28,
     heroIds: ["el-cezeri", "yunus-emre"],
     medallionImage: "assets/images/el_cezeri_hero.png",
   },
@@ -150,8 +150,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Erzurum & İnebolu",
     shortName: "Erzurum",
     centuryBadge: "19–20. yy",
-    xPercent: 65,
-    yPercent: 16,
+    xPercent: 68,
+    yPercent: 14,
     heroIds: ["nene-hatun-serife-baci"],
     medallionImage: "assets/images/nene_hatun_aziziye.png",
   },
@@ -160,8 +160,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Bağdat & Halep",
     shortName: "Bağdat",
     centuryBadge: "8–10. yy",
-    xPercent: 71,
-    yPercent: 46,
+    xPercent: 72,
+    yPercent: 47,
     heroIds: ["harizmi-meryem", "cabir-bin-hayyan"],
     medallionImage: "assets/images/meryem_el_icliyye_astrolabe.png",
   },
@@ -170,8 +170,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Buhara & Gazne",
     shortName: "Buhara",
     centuryBadge: "10–11. yy",
-    xPercent: 77,
-    yPercent: 29,
+    xPercent: 80,
+    yPercent: 28,
     heroIds: ["ibn-sina", "biruni"],
     medallionImage: "assets/images/ibn_sina_hero.png",
   },
@@ -180,8 +180,8 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Semerkand",
     shortName: "Semerkand",
     centuryBadge: "15. yy",
-    xPercent: 86,
-    yPercent: 22,
+    xPercent: 89,
+    yPercent: 17,
     heroIds: ["ulug-bey", "ali-kuscu"],
     medallionImage: "assets/images/ulug_bey_observatory.png",
   },
@@ -190,7 +190,7 @@ const ATLAS_CITY_NODES: AtlasCityNode[] = [
     cityName: "Hint Okyanusu & Çin",
     shortName: "Doğu Rotası",
     centuryBadge: "14. yy",
-    xPercent: 85,
+    xPercent: 86,
     yPercent: 76,
     heroIds: ["ibn-battuta"],
     medallionImage: "assets/images/ibn_battuta_maldives_china.png",
@@ -657,10 +657,18 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               />
             )}
 
-            {/* City Medallions */}
+            {/* City Markers: clean glowing compass pins for other cities, expanded medallion ONLY for selected city */}
             {ATLAS_CITY_NODES.map((city) => {
               const isSelected = city.id === selectedCity.id;
               const medallionSource = resolveImageAsset(city.medallionImage);
+              const pinDiameter = isSelected
+                ? isTablet
+                  ? 48
+                  : 38
+                : isTablet
+                ? 22
+                : 17;
+              const halfPin = pinDiameter / 2;
 
               return (
                 <View
@@ -670,8 +678,8 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                     left: `${city.xPercent}%`,
                     top: `${city.yPercent}%`,
                     transform: [
-                      { translateX: -halfMedallion },
-                      { translateY: -halfMedallion },
+                      { translateX: -halfPin },
+                      { translateY: -halfPin },
                     ],
                     alignItems: "center",
                     zIndex: isSelected ? 50 : 20,
@@ -680,42 +688,75 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                   <BouncyPressable
                     onPress={() => handlePressCityMedallion(city)}
                     scaleTo={0.93}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={{ alignItems: "center" }}
                   >
-                    <View
-                      style={{
-                        width: medallionSize,
-                        height: medallionSize,
-                        borderRadius: halfMedallion,
-                        borderWidth: isSelected ? 3 : 2,
-                        borderColor: isSelected ? "#10B981" : "#FBBF24",
-                        backgroundColor: "#1C1917",
-                        overflow: "hidden",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {medallionSource && (
-                        <Image
-                          source={medallionSource}
-                          resizeMode="cover"
-                          style={{ width: "100%", height: "100%" }}
+                    {isSelected ? (
+                      <View
+                        style={{
+                          width: pinDiameter,
+                          height: pinDiameter,
+                          borderRadius: halfPin,
+                          borderWidth: 3,
+                          borderColor: "#10B981",
+                          backgroundColor: "#1C1917",
+                          overflow: "hidden",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.45,
+                          shadowRadius: 5,
+                          elevation: 6,
+                        }}
+                      >
+                        {medallionSource && (
+                          <Image
+                            source={medallionSource}
+                            resizeMode="cover"
+                            style={{ width: "100%", height: "100%" }}
+                          />
+                        )}
+                      </View>
+                    ) : (
+                      <View
+                        style={{
+                          width: pinDiameter,
+                          height: pinDiameter,
+                          borderRadius: halfPin,
+                          backgroundColor: "#F59E0B",
+                          borderWidth: 2,
+                          borderColor: "#FFFDF7",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.35,
+                          shadowRadius: 3,
+                          elevation: 3,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: isTablet ? 7 : 5,
+                            height: isTablet ? 7 : 5,
+                            borderRadius: 4,
+                            backgroundColor: "#1E1B4B",
+                          }}
                         />
-                      )}
-                    </View>
+                      </View>
+                    )}
 
-                    {/* Show city label on tablet or only for the selected city on phone */}
                     {(isTablet || isSelected) && (
                       <View
                         style={{
                           marginTop: 2,
-                          paddingHorizontal: 7,
+                          paddingHorizontal: isSelected ? 8 : 6,
                           paddingVertical: 2,
                           borderRadius: 999,
                           backgroundColor: isSelected
                             ? "#0D9488"
-                            : "rgba(28, 25, 23, 0.86)",
+                            : "rgba(28, 25, 23, 0.84)",
                           borderWidth: 1,
                           borderColor: isSelected ? "#99F6E4" : "#FBBF24",
                         }}
@@ -723,8 +764,12 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
                         <Text
                           style={{
                             color: "#FFFFFF",
-                            fontSize: isTablet ? 10.5 : 9.5,
-                            fontWeight: "800",
+                            fontSize: isSelected
+                              ? isTablet
+                                ? 11
+                                : 10
+                              : 9.5,
+                            fontWeight: "900",
                           }}
                           numberOfLines={1}
                         >
@@ -748,7 +793,6 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
               padding: isTablet ? 14 : 11,
               borderWidth: 1.5,
               borderColor: "#E7E5E4",
-              justifyContent: "space-between",
             }}
           >
           <View
@@ -790,8 +834,8 @@ export const WorldAtlasAndTimeline: React.FC<WorldAtlasAndTimelineProps> = ({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ width: "100%", marginBottom: 10 }}
-              contentContainerStyle={{ gap: 6 }}
+              style={{ width: "100%", flexGrow: 0, flexShrink: 0, marginBottom: 10 }}
+              contentContainerStyle={{ gap: 6, alignItems: "center" }}
             >
               {cityHeroes.map((h) => {
                 const isHeroActive = h.id === activeHero.id;

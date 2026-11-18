@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
+import { playNarration, stopNarration } from "../../src/utils/storyNarrator";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -145,11 +145,7 @@ export default function InteractiveChapterPlayerScreen() {
   };
 
   const stopTurkishSpeech = () => {
-    try {
-      Speech.stop();
-    } catch {
-      // ignore
-    }
+    stopNarration().catch(() => {});
     setIsSpeaking(false);
   };
 
@@ -208,36 +204,25 @@ export default function InteractiveChapterPlayerScreen() {
     cardScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [sceneIndex, sceneViewMode, stage]);
 
-  const handleToggleSpeech = (textToSpeak: string) => {
+  const handleToggleSpeech = (textToSpeak: string, clipId?: string) => {
     triggerLightHaptic();
     if (isSpeaking) {
       stopTurkishSpeech();
       return;
     }
 
-    try {
-      Speech.stop();
-      setIsSpeaking(true);
-      Speech.speak(textToSpeak, {
-        language: "tr-TR",
-        rate: 0.95,
-        pitch: 1.0,
-        onDone: () => setIsSpeaking(false),
-        onStopped: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
-      });
-    } catch {
-      setIsSpeaking(false);
-    }
+    setIsSpeaking(true);
+    playNarration({
+      clipId,
+      fallbackText: textToSpeak,
+      onFinish: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    }).catch(() => setIsSpeaking(false));
   };
 
   useEffect(() => {
     return () => {
-      try {
-        Speech.stop();
-      } catch {
-        // ignore
-      }
+      stopNarration().catch(() => {});
     };
   }, []);
 
@@ -863,9 +848,9 @@ export default function InteractiveChapterPlayerScreen() {
   };
 
   // AUDIO BUTTON HELPER
-  const renderSpeechButton = (textToSpeak: string) => (
+  const renderSpeechButton = (textToSpeak: string, clipId?: string) => (
     <BouncyPressable
-      onPress={() => handleToggleSpeech(textToSpeak)}
+      onPress={() => handleToggleSpeech(textToSpeak, clipId)}
       scaleTo={0.96}
       style={{
         paddingHorizontal: isTablet ? 12 : 10,
@@ -978,7 +963,12 @@ export default function InteractiveChapterPlayerScreen() {
                 </Text>
               </View>
 
-              {renderSpeechButton(fullSpeechText)}
+              {renderSpeechButton(
+                fullSpeechText,
+                sceneViewMode === "MID_DECISION" && currentScene.midDecision
+                  ? `${chapter.id}_mid`
+                  : `${chapter.id}_s${currentScene.sceneNumber}`
+              )}
             </View>
 
             {hasMidDecision && (
@@ -1547,7 +1537,8 @@ export default function InteractiveChapterPlayerScreen() {
         </View>
 
         {renderSpeechButton(
-          `${chapter.destinyMoment.title}. ${chapter.destinyMoment.question}`
+          `${chapter.destinyMoment.title}. ${chapter.destinyMoment.question}`,
+          `${chapter.id}_destiny`
         )}
       </View>
 
@@ -1829,7 +1820,10 @@ export default function InteractiveChapterPlayerScreen() {
           </Text>
         </View>
 
-        {renderSpeechButton(chapter.destinyMoment.historicalTruthExplanation)}
+        {renderSpeechButton(
+          chapter.destinyMoment.historicalTruthExplanation,
+          `${chapter.id}_truth`
+        )}
       </View>
 
       {/* Scrollable Explanation + Quote */}

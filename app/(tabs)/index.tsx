@@ -318,8 +318,8 @@ export default function HomeDiscoveryScreen() {
               </View>
             </View>
 
-            {/* 2. SPOTLIGHT FEATURED CHAPTER + COMPACT PROGRESS STRIP */}
-            {featuredEntry && (
+            {/* 2. SPOTLIGHT FEATURED CHAPTER (Visible in HEROES tab so ATLAS map starts immediately near the top!) */}
+            {activeTab === "HEROES" && featuredEntry && (
               <BouncyPressable
                 onPress={() => {
                   triggerLightHaptic();

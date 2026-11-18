@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.miras.izsurenler",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "CFBundleDisplayName": "MİRAS: İz Sürenler",
         "CFBundleDevelopmentRegion": "tr",
